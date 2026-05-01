@@ -52,7 +52,7 @@ mkdir -p "${RESULTS_DIR}"
 cat > "slurm/_exp09_${TAG}.sh" << 'EOF'
 #!/bin/bash
 set -euo pipefail
-module load StdEnv/2023 python/3.11 cuda/12.2
+module load StdEnv/2023 gcc arrow python/3.11 cuda/12.2
 source "$HOME/envs/swiglu/bin/activate"
 export PYTHONNOUSERSITE=1
 unset PYTHONPATH

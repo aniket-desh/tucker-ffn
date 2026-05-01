@@ -16,7 +16,10 @@ set -euo pipefail
 
 VENV_DIR="$HOME/envs/swiglu"
 
-module load StdEnv/2023 python/3.11 cuda/12.2
+# arrow module MUST be loaded BEFORE activating the venv: scinet's
+# wheelhouse intercepts pyarrow (a transitive dep of `datasets`) with
+# a dummy wheel that errors out unless the arrow module is present.
+module load StdEnv/2023 gcc arrow python/3.11 cuda/12.2
 
 if [ ! -d "$VENV_DIR" ]; then
     echo "[setup] creating venv at $VENV_DIR"
