@@ -13,6 +13,7 @@ from .model_utils import (
     load_model_and_tokenizer,
     load_text_data,
 )
+from .permutation import permuted_layer
 from .plot_style import (
     COLOR_CYCLE,
     LAYER_CMAP,
@@ -55,6 +56,7 @@ __all__ = [
     "load_model_and_tokenizer",
     "load_text_data",
     "log",
+    "permuted_layer",
     "prepare_run",
     "setup_plot_style",
 ]

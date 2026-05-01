@@ -23,6 +23,7 @@ experiments (each lives in experiments/expNN_*.py and can be run standalone):
   6. layerwise ablation — ablate routing one layer at a time
   7. interpolation sweep — dose-response from normal to fully ablated routing
   8. channel-subset ablation — ablate high/low variance or contribution channels
+  9. pairing permutation — break same-index W-G coupling (joint π) vs U-only control
 
 note: pythia models use standard gelu mlp, NOT swiglu. default model is
 Qwen/Qwen2.5-0.5B which has the required gate_proj / up_proj / down_proj
@@ -66,6 +67,10 @@ from experiments.exp07_interpolation_sweep import (
 from experiments.exp08_channel_subset_ablation import (
     plot_channel_subset_ablation,
     run_channel_subset_ablation,
+)
+from experiments.exp09_pairing_permutation import (
+    plot_pairing_permutation,
+    run_pairing_permutation,
 )
 from lib import add_common_args, log, prepare_run, setup_plot_style
 
@@ -142,6 +147,15 @@ def replot_from_saved(exps, results_dir):
             plot_channel_subset_ablation(results, results_dir)
         else:
             log("error", f"channel_subset_ablation.json not found in {results_dir}/")
+
+    if 9 in exps:
+        path = os.path.join(results_dir, "pairing_permutation.json")
+        if os.path.exists(path):
+            with open(path) as f:
+                results = json.load(f)
+            plot_pairing_permutation(results, results_dir)
+        else:
+            log("error", f"pairing_permutation.json not found in {results_dir}/")
 
     log("done", f"plots regenerated | time={time.time() - t0:.1f}s")
 
@@ -227,6 +241,12 @@ def main():
     if 8 in exps:
         run_channel_subset_ablation(
             model, layers_info, mlp_inputs, eval_ids, device, results_dir,
+        )
+        print()
+
+    if 9 in exps:
+        run_pairing_permutation(
+            model, layers_info, eval_ids, device, results_dir,
         )
         print()
 
