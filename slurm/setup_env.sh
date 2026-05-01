@@ -33,10 +33,15 @@ export PYTHONNOUSERSITE=1
 unset PYTHONPATH
 
 python3 -m pip install --upgrade pip
+# datasets is pinned to <3 because newer releases require pyarrow>=21,
+# which is newer than the pyarrow shipped by scinet's arrow module —
+# pip then tries to compile pyarrow from source and hits the dummy-wheel
+# error. transformers/torch are unconstrained (cvmfs wheelhouse picks
+# the right computecanada-tagged versions automatically).
 python3 -m pip install \
     torch \
     transformers \
-    datasets \
+    "datasets>=2.20,<3" \
     numpy \
     matplotlib
 
