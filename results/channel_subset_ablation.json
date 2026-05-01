@@ -1,0 +1,7 @@
+{
+  "baseline": 16.835189819335938,
+  "top 10%\nby variance": 86109.4765625,
+  "bottom 10%\nby variance": 92.51046752929688,
+  "top 10%\nby |c_j|": 812297.6875,
+  "bottom 90%\nby variance": 17558.18359375
+}
