@@ -11,7 +11,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from lib import (ablated_routing, compute_channel_quantities,  # noqa: E402
                  compute_perplexity, log)
 from lib.model_utils import get_swiglu_layers
-from lib.activations import capture_mlp_inputs
+from lib.activations import capture_mlp_io
 
 
 MODEL = "Qwen/Qwen2.5-0.5B"
@@ -45,7 +45,7 @@ calib_text = "\n\n".join(t for t in ds_train["text"] if t.strip())
 calib_ids = tok(calib_text, return_tensors="pt").input_ids[:, :32 * 1024].to(device)
 
 layers_info = get_swiglu_layers(model)
-mlp_inputs = capture_mlp_inputs(model, layers_info, calib_ids)
+mlp_inputs, _ = capture_mlp_io(model, calib_ids, layers_info, device)
 mean_alphas = {}
 for info in layers_info:
     _, _, alpha, _ = compute_channel_quantities(

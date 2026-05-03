@@ -95,6 +95,13 @@ dotted line marks m = k²._
 - k=8 (knee at m=64): aligned 9.57e-1 (m=16) → 4.74e-4 (m=64) → **6.38e-14 (m=256)**; unconstrained plateaus at 1.9e-3.
 - k=16 (knee at m=256): aligned 9.68 (m=32) → 1.49e-3 (m=256) → **3.44e-12 (m=1024)**; unconstrained plateaus at 8.7e-2.
 
+**SVD construction (★ markers at m = k²)**: an analytic aligned-SwiGLU constructed by SVD-decomposing each V_j = R C^(j) into rank-ρ_j ≤ k SVD terms (no training) lands at:
+- k=4, m=16: **2.5e-14**
+- k=8, m=64: **1.9e-13**
+- k=16, m=256: **1.4e-12**
+
+This verifies the Theorem 4.2 upper bound is attained without optimization (the trained aligned-SwiGLU at m=k² has not yet converged to the SVD construction, but the analytic construction shows the bound is tight).
+
 This is the most direct empirical verification of Theorem 1.
 
 ---

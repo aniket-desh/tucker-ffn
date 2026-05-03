@@ -47,17 +47,25 @@ def write_tex_stub(name, fig_dir, caption):
 
 
 def fig_synthetic_fitting(fig_dir, src_dir):
-    """just copy exp10's plot as the headline."""
+    """copy exp10's plot (with SVD-construction overlay if available)."""
     src = os.path.join(src_dir, "synthetic_fitting.png")
     if not os.path.exists(src):
         log("error", f"missing {src}")
         return
-    dst = os.path.join(fig_dir, "fig_synthetic_fitting.png")
-    shutil.copyfile(src, dst)
+    shutil.copyfile(src, os.path.join(fig_dir, "fig_synthetic_fitting.png"))
+    src_pdf = os.path.join(src_dir, "synthetic_fitting.pdf")
+    if os.path.exists(src_pdf):
+        shutil.copyfile(src_pdf,
+                         os.path.join(fig_dir, "fig_synthetic_fitting.pdf"))
     write_tex_stub("fig_synthetic_fitting", fig_dir,
-        "Validation MSE of student SwiGLU and Tucker FFNs fit to a generic "
-        "Tucker teacher with full-rank cores. The matched-coordinates SwiGLU "
-        r"shows the predicted knee at $m=k^2$ (Theorem~\ref{thm:separation}).")
+        r"Validation MSE of student SwiGLU and Tucker FFNs fit to a generic "
+        r"Tucker teacher with full-rank cores. The matched-coordinates SwiGLU "
+        r"shows the predicted knee at $m{=}k^2$ "
+        r"(Theorem~\ref{thm:separation}). Stars at $m{=}k^2$ mark the "
+        r"\emph{analytic} SVD construction of an aligned-SwiGLU width-$k^2$ "
+        r"student via per-gate SVD of $V_j{=}RC^{(j)}$ (no training, no "
+        r"optimization), verifying that the upper bound from the proof is "
+        r"attained at machine precision ($\lesssim 10^{-12}$).")
     log("done", f"wrote fig_synthetic_fitting.png")
 
 
