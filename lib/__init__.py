@@ -32,6 +32,14 @@ from .routing import (
     interpolated_routing,
 )
 from .runner import add_common_args, prepare_run
+from .tucker_ffn import (
+    SwiGLUFFN,
+    SwiGLUFFNAligned,
+    TuckerFFN,
+    swiglu_params,
+    swiglu_width_for_params,
+    tucker_params,
+)
 
 __all__ = [
     "COLOR_CYCLE",
@@ -42,6 +50,9 @@ __all__ = [
     "LS_CYCLE",
     "MARKER_CYCLE",
     "PALETTE",
+    "SwiGLUFFN",
+    "SwiGLUFFNAligned",
+    "TuckerFFN",
     "ablated_routing",
     "ablated_single_layer",
     "add_common_args",
@@ -59,4 +70,7 @@ __all__ = [
     "permuted_layer",
     "prepare_run",
     "setup_plot_style",
+    "swiglu_params",
+    "swiglu_width_for_params",
+    "tucker_params",
 ]

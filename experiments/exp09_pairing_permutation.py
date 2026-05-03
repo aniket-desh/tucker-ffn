@@ -57,23 +57,34 @@ from lib import (
 
 
 def plot_pairing_permutation(results, results_dir):
-    """plot per-layer perplexity for joint vs u_only, with baseline reference."""
+    """plot per-layer perplexity for joint vs u_only with baseline + optional noop."""
     ppl_baseline = results["baseline"]
     n_layers = len(results["joint"]["mean"])
     layers_x = np.arange(n_layers)
 
     fig, ax = plt.subplots(figsize=(11, 4))
 
+    floor = ppl_baseline * 0.7
     for cond, color, marker, label in [
         ("joint",  PALETTE["ablation"],  "o", r"joint $\pi_G = \pi_U$ (breaks W-G coupling)"),
-        ("u_only", PALETTE["secondary"], "s", r"$\pi_U$ only (control: breaks U pairing)"),
+        ("u_only", PALETTE["secondary"], "s", r"$\pi_U$ only (breaks U pairing)"),
     ]:
         mean = np.array(results[cond]["mean"])
         std = np.array(results[cond]["std"])
         ax.plot(layers_x, mean, marker=marker, color=color, lw=1.5, ms=4,
                 label=label)
-        ax.fill_between(layers_x, mean - std, mean + std,
+        ax.fill_between(layers_x, np.maximum(mean - std, floor), mean + std,
                         color=color, alpha=0.15)
+
+    # optional no-op control overlay
+    noop_path = os.path.join(results_dir, "noop_control.json")
+    if os.path.exists(noop_path):
+        with open(noop_path) as f:
+            noop = json.load(f)
+        noop_means = np.array(noop["noop_per_layer_mean"])
+        ax.plot(np.arange(len(noop_means)), noop_means,
+                marker="x", ls=":", color=PALETTE["accent"], lw=1.0, ms=4,
+                label=r"no-op: permute $\pi_G=\pi_W=\pi_U$ together")
 
     ax.axhline(ppl_baseline, color=PALETTE["primary"], ls="--", lw=0.8,
                label=f"baseline = {ppl_baseline:.1f}")
@@ -81,7 +92,9 @@ def plot_pairing_permutation(results, results_dir):
     ax.set_ylabel("perplexity")
     ax.set_yscale("log")
     ax.set_xticks(layers_x)
-    ax.legend(framealpha=0.9, edgecolor="0.8", loc="upper left")
+    ax.set_ylim(bottom=floor)
+    ax.legend(framealpha=0.95, edgecolor="0.8", loc="lower center",
+              ncol=2, bbox_to_anchor=(0.5, 1.02))
 
     plt.tight_layout()
     plt.savefig(os.path.join(results_dir, "pairing_permutation.png"))
@@ -90,7 +103,7 @@ def plot_pairing_permutation(results, results_dir):
 
 
 def run_pairing_permutation(model, layers_info, eval_ids, device, results_dir,
-                            n_seeds=3, base_seed=0):
+                            n_seeds=8, base_seed=0):
     log("info", f"experiment 9: same-index pairing permutation | n_seeds={n_seeds}")
 
     m = layers_info[0]["gate_proj"].weight.shape[0]
@@ -142,6 +155,17 @@ def run_pairing_permutation(model, layers_info, eval_ids, device, results_dir,
         },
     }
 
+    # summary statistics: joint/u_only ratio per layer + aggregate
+    joint_means = np.array(results["joint"]["mean"])
+    u_means = np.array(results["u_only"]["mean"])
+    ratio = joint_means / np.maximum(u_means, 1e-30)
+    results["ratio_joint_over_u_only"] = ratio.tolist()
+    results["geomean_ratio"] = float(np.exp(np.log(ratio).mean()))
+    log("summary", f"geomean(joint/u_only) across layers = "
+        f"{results['geomean_ratio']:.2e}")
+    log("summary", f"max  joint perplexity = {joint_means.max():.2e} | "
+        f"max  u_only perplexity = {u_means.max():.2e}")
+
     with open(os.path.join(results_dir, "pairing_permutation.json"), "w") as f:
         json.dump(results, f, indent=2)
     log("done", f"saved pairing_permutation.json -> {results_dir}/")
@@ -153,7 +177,7 @@ def run_pairing_permutation(model, layers_info, eval_ids, device, results_dir,
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser)
-    parser.add_argument("--n_seeds", type=int, default=3,
+    parser.add_argument("--n_seeds", type=int, default=8,
                         help="number of random permutations per layer")
     args = parser.parse_args()
 

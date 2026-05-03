@@ -24,6 +24,11 @@ experiments (each lives in experiments/expNN_*.py and can be run standalone):
   7. interpolation sweep — dose-response from normal to fully ablated routing
   8. channel-subset ablation — ablate high/low variance or contribution channels
   9. pairing permutation — break same-index W-G coupling (joint π) vs U-only control
+ 10. synthetic fitting limit — verify theorem 1 separation bound on synthetic teachers
+ 11. lm training — train swiglu vs tucker lm at matched param count
+ 12. trained tucker analysis — stable rank of V_j across layers
+ 13. diagonal projection — c-diagonal projection + per-j svd truncation perplexity
+ 14. distillation — fit student swiglu/tucker to a pretrained teacher ffn
 
 note: pythia models use standard gelu mlp, NOT swiglu. default model is
 Qwen/Qwen2.5-0.5B which has the required gate_proj / up_proj / down_proj
