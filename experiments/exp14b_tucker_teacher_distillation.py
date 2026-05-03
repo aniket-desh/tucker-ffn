@@ -232,7 +232,7 @@ def main():
     log("done", f"saved tucker_teacher_distillation.json -> {args.results_dir}/")
 
     # plot
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(7, 4))
     xs = [e["tucker_params"] for e in results]
     sw_means = [np.mean([r["val_mse"] for r in e["results"]["swiglu"]]) for e in results]
     sw_stds = [np.std([r["val_mse"] for r in e["results"]["swiglu"]]) for e in results]
@@ -243,7 +243,7 @@ def main():
     ax.errorbar(xs, tk_means, yerr=tk_stds, marker="s", color=PALETTE["ablation"],
                 lw=1.5, label="tucker (student)", capsize=3)
     ax.set_xlabel("ffn parameter budget")
-    ax.set_ylabel(f"distillation val MSE (tucker teacher, r={r_teacher})")
+    ax.set_ylabel(f"distillation val MSE\n(tucker teacher, r={r_teacher})")
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.legend(framealpha=0.9, edgecolor="0.8")

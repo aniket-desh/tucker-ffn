@@ -504,15 +504,19 @@ def write_summary(results_root, fig_dir):
                          f"ratio = {np.mean(sw_means)/max(np.mean(tk_means), 1e-30):.2f}x")
     add_section("Distillation gap (exp14b, tucker teacher)", db, _db)
 
-    # paper figures
-    lines.append("## Paper figures")
-    for name in ["fig_synthetic_fitting", "fig_diagonal_projection",
-                  "fig_pairing_permutation", "fig_stable_rank_histogram",
-                  "fig_routing_validation", "fig_lm_loss_curves",
-                  "fig_tucker_teacher_distillation",
+    # paper figures: main text (5) and appendix (3)
+    lines.append("## Paper figures (main text)")
+    for name in ["fig_routing_validation", "fig_synthetic_fitting",
+                  "fig_diagonal_projection", "fig_stable_rank_histogram",
+                  "fig_tucker_teacher_distillation"]:
+        png = pathlib.Path(fig_dir) / f"{name}.png"
+        status = "OK" if png.exists() else "MISSING"
+        lines.append(f"- `{name}.png` [{status}], stub `{name}.tex`")
+    lines.append("")
+    lines.append("## Paper figures (appendix)")
+    for name in ["fig_pairing_permutation", "fig_lm_loss_curves",
                   "fig_robustness_panel"]:
         png = pathlib.Path(fig_dir) / f"{name}.png"
-        tex = pathlib.Path(fig_dir) / f"{name}.tex"
         status = "OK" if png.exists() else "MISSING"
         lines.append(f"- `{name}.png` [{status}], stub `{name}.tex`")
     lines.append("")
@@ -534,6 +538,11 @@ def write_summary(results_root, fig_dir):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--results_root", type=str, default="results")
+    parser.add_argument("--tucker_variant", type=str, default="hc_v3",
+                        help="which trained-tucker variant to source the "
+                             "§5.2 figures from. options: '' (=default-init "
+                             "exp12/exp13), 'hc' (v1), 'hc_v2', 'hc_v3'. "
+                             "the paper narrative uses hc_v3.")
     parser.add_argument("--robustness_tags", type=str,
                         default="qwen25_05b,llama32_1b",
                         help="comma-separated <baseline>,<other> model tags "
@@ -544,10 +553,16 @@ def main():
     fig_dir = os.path.join(args.results_root, "figures")
     os.makedirs(fig_dir, exist_ok=True)
 
+    # tucker variant for §5.2 figures (diagonal projection + stable rank).
+    # the paper narrative is built around hc_v3 (corrected variance-preserving
+    # init), so source the trained-tucker figures from exp12_hc_v3 / exp13_hc_v3.
+    tucker_variant = args.tucker_variant
     fig_synthetic_fitting(fig_dir, os.path.join(args.results_root, "exp10"))
-    fig_diagonal_projection(fig_dir, os.path.join(args.results_root, "exp13"))
+    fig_diagonal_projection(fig_dir,
+                             os.path.join(args.results_root, f"exp13_{tucker_variant}"))
     fig_pairing_permutation(fig_dir, os.path.join(args.results_root, "qwen25_05b"))
-    fig_stable_rank_histogram(fig_dir, os.path.join(args.results_root, "exp12"))
+    fig_stable_rank_histogram(fig_dir,
+                               os.path.join(args.results_root, f"exp12_{tucker_variant}"))
     fig_routing_validation(fig_dir, os.path.join(args.results_root, "qwen25_05b"))
     fig_lm_loss_curves(fig_dir, os.path.join(args.results_root, "exp11"))
     fig_tucker_teacher_distillation(fig_dir,

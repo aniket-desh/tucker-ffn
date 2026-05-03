@@ -132,6 +132,10 @@ def plot_stable_rank(results, results_dir):
             color = cmap(li / max(L - 1, 1))
             ax.hist(s_rank[li], bins=20, color=color, alpha=0.75,
                     edgecolor="0.3", linewidth=0.4)
+            # vertical reference line at rank=1: the aligned-swiglu ceiling
+            # (a swiglu of width r can express at most rank-1 V_j per gate).
+            ax.axvline(1.0, color=PALETTE["ablation"], ls="-", lw=1.0,
+                        label="aligned-swiglu (rank 1)")
             ax.axvline(s_rank[li].mean(), color=PALETTE["neutral"], ls="--",
                         lw=0.8, label=f"mean = {s_rank[li].mean():.2f}")
             ax.set_xlabel("stable rank of $V_j$")

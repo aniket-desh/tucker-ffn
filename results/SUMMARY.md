@@ -3,8 +3,23 @@
 Paper-flow walkthrough: each section names the claim it makes, shows the figure
 it makes the claim with, and lists the numerical evidence underneath.
 
-The eight figures live as PNGs at `results/figures/` with matching
-`\includegraphics` `.tex` stubs at `results/figures/fig_*.tex`.
+The five main-text figures and three appendix figures live as PNGs at
+`results/figures/` with matching `\includegraphics` `.tex` stubs at
+`results/figures/fig_*.tex`.
+
+**Main-text figures**
+
+1. `fig_routing_validation` — §3
+2. `fig_synthetic_fitting`  — §5.1
+3. `fig_diagonal_projection` — §5.2
+4. `fig_stable_rank_histogram` — §5.2
+5. `fig_tucker_teacher_distillation` — §5.3
+
+**Appendix figures**
+
+- A1. `fig_pairing_permutation` — §3 supplementary (same-index coupling)
+- A2. `fig_lm_loss_curves`     — §5.4 supplementary (loss curves over time)
+- A3. `fig_robustness_panel`    — robustness across model families
 
 ---
 
@@ -29,11 +44,15 @@ All three constant-α replacements destroy the model by 4–6 orders of magnitud
 
 ---
 
-## §3 Same-index pairing is binding (Figure 2)
+## §3 Same-index pairing is binding (Appendix A1)
 
-> **Claim.** Random permutation of any single matrix among (W, G, U) is
-> catastrophic; the no-op control of permuting all three together is exactly
-> baseline. The same-index coupling is jointly binding among all three factors.
+> **Claim.** The same-index coupling among (W, G, U) is non-trivial: random
+> single-factor permutation of a SwiGLU layer is layer-dependent — early
+> layers degrade by 3–4 orders of magnitude in perplexity, middle layers by
+> only ~10–50%, and the no-op control of permuting all three together with
+> the same π is exactly baseline. The asymmetry shows the binding strength
+> varies with depth, but the no-op control rules out a permutation-of-units
+> artifact.
 
 ![fig_pairing_permutation](figures/fig_pairing_permutation.png)
 
@@ -43,18 +62,22 @@ overlay: joint π_G=π_U breaks W–G; π_U-only breaks U-pairing; π_G-only and
 π_W-only break the matching coupling. No-op (g+u+w joint π) overlays exactly
 on the baseline (16.84) line at every layer._
 
-| condition | mean ppl across layers | max (layer 0) |
-|---|---|---|
-| baseline | 16.84 | — |
-| **joint** π_G=π_U (breaks W–G) | 1100 | 25,600 |
-| **u_only** (breaks U pairings) | 1100 | 24,500 |
-| **g_only** (breaks G pairings) | 1470 | 34,600 |
-| **w_only** (breaks W pairings) | 1250 | 29,400 |
-| **no-op** (g+u+w joint π) | 16.84 (max dev 7.6e-6) | — |
+| condition | mean ppl | max (layer 0) | min (layer 10) | layer-10 ratio |
+|---|---|---|---|---|
+| baseline | 16.84 | — | — | 1.00× |
+| **joint** π_G=π_U (breaks W–G) | 1100 | 25,600 | 18.9 | 1.12× |
+| **u_only** (breaks U pairings) | 1100 | 24,500 | 18.8 | 1.12× |
+| **g_only** (breaks G pairings) | 1470 | 34,600 | 19.1 | 1.13× |
+| **w_only** (breaks W pairings) | 1250 | 29,400 | 19.0 | 1.13× |
+| **no-op** (g+u+w joint π) | 16.84 (max dev 7.6e-6) | — | — | 1.00× |
+
+This figure is supplementary (appendix); the main text references the
+geomean(joint/u_only) ratio of 0.846 and the no-op control as a one-line
+sanity check.
 
 ---
 
-## §5.1 Synthetic separation experiment — Theorem 1 verified (Figure 3, headline)
+## §5.1 Synthetic separation experiment — Theorem 1 verified (Figure 2, headline)
 
 > **Claim.** A SwiGLU constrained to the matched-coordinates hypothesis class
 > shows the predicted knee at m = k² when fitting a generic Tucker(d,r=s=k)
@@ -76,7 +99,7 @@ This is the most direct empirical verification of Theorem 1.
 
 ---
 
-## §5.2 Diagonal-bottleneck cost on a trained Tucker LM (Figure 4)
+## §5.2 Diagonal-bottleneck cost on a trained Tucker LM (Figure 3)
 
 > **Claim.** Forcing a trained Tucker layer's core C onto its superdiagonal —
 > the SwiGLU recovery condition — costs **518× perplexity** at matched
@@ -97,7 +120,7 @@ passes at 0.002% rel_err._
 
 ---
 
-## §5.2 Stable rank confirms cross-channel exploitation (Figure 5)
+## §5.2 Stable rank confirms cross-channel exploitation (Figure 4)
 
 > **Claim.** Trained Tucker layers V_j = R C^(j) have stable rank well
 > above 1 in every gate, so the model genuinely exploits cross-channel
@@ -105,22 +128,27 @@ passes at 0.002% rel_err._
 
 ![fig_stable_rank_histogram](figures/fig_stable_rank_histogram.png)
 
-_source: `results/exp12/stable_rank.npz` (default-init trained Tucker, 8 layers
+_source: `results/exp12_hc_v3/stable_rank.npz` (hc v3 trained Tucker, 8 layers
 × 128 gates). Histograms of stable rank ‖V_j‖_F² / ‖V_j‖_op² across gates,
-faceted by layer._
+faceted by layer. Vertical red line marks the rank-1 ceiling that an aligned
+SwiGLU at width r would impose._
 
 | run | mean stable rank | min | max |
 |---|---|---|---|
-| default-init tucker (exp11) | **27.56** | 22.01 | 31.42 |
+| default-init tucker (exp11) | 27.56 | 22.01 | 31.42 |
 | hc v1 (`diagonal_bias_init`, legacy scaling) | 16.80 | 8.21 | 23.02 |
 | hc v2 (v1 + 2× core LR) | 15.17 | 7.15 | 20.70 |
-| hc v3 (corrected init) | 3.97 | 2.79 | 5.30 |
+| **hc v3 (corrected init, paper variant)** | **3.97** | 2.79 | 5.30 |
 
-All four runs land well above the rank-1 ceiling that Theorem 1 imposes on aligned-SwiGLU at width r. Default-init uses the most rank; the corrected variance-preserving warm start keeps the model close to diagonal while still using ~4× the rank-1 ceiling.
+All four runs land well above the rank-1 ceiling that Theorem 1 imposes on
+aligned-SwiGLU at width r. The corrected variance-preserving warm start
+(hc v3 — the paper variant, consistent with §5.4) keeps the model close to
+diagonal while still using ~4× the rank-1 ceiling. Default-init uses the most
+rank but pays a 30% perplexity penalty (see §5.4).
 
 ---
 
-## §5.3 Distillation gap — Tucker beats SwiGLU at scale (Figure 6)
+## §5.3 Distillation gap — Tucker beats SwiGLU at scale (Figure 5)
 
 > **Claim.** When the teacher is a trained Tucker layer, a Tucker student
 > outperforms a parameter-matched SwiGLU student at sufficient budget. There
@@ -144,41 +172,48 @@ Crossover at ~7×10⁵ params. At the matched-budget LM config (r=s=128), Tucker
 
 ---
 
-## §5.4 End-to-end LM training — corrected init lets Tucker win (Figure 7)
+## §5.4 End-to-end LM training — variance-preserving init closes the optimization gap (Table 1)
 
 > **Claim.** At matched parameter count from scratch on 100M tokens of
-> FineWeb-Edu, the Tucker FFN beats SwiGLU when initialized at the
-> SwiGLU-equivalent diagonal subspace with the variance-preserving scaling.
-
-![fig_lm_loss_curves](figures/fig_lm_loss_curves.png)
-
-_source: `results/exp11/{swiglu_seed0, tucker_seed0}/loss_log.json` plus the
-hill-climb dirs `results/exp11_hc{,_v2,_v3}/`. (Current figure shows the
-default-init swiglu vs default-init tucker curves only; the hc v1/v2/v3 runs
-are documented in the table below — re-rendering the loss curves overlay
-across all five runs is on the to-do list.)_
+> FineWeb-Edu, with the variance-preserving init the Tucker FFN is **no
+> worse than** SwiGLU end-to-end. The end-to-end Δ is sub-noise at one seed;
+> the binding evidence for the architectural prediction comes from the
+> layer-level probes (§5.2 stable rank, §5.3 distillation), not from this
+> end-to-end loss number.
 
 | arch / init | params | val_loss | perplexity | Δ vs swiglu |
 |---|---|---|---|---|
 | swiglu (matched m=1493)        | 52.5M | 4.758 | 116.48 | — |
-| tucker default init            | 52.5M | 5.116 | 166.7  | +0.358 nats |
-| tucker hc v1 (diag_bias, legacy init) | 52.5M | 4.772 | 118.2 | +0.014 nats |
-| tucker hc v2 (v1 + 2× core LR) | 52.5M | 4.770 | 118.0 | +0.012 nats |
-| **tucker hc v3 (corrected init)** | **52.5M** | **4.753** | **115.98** | **−0.005 nats** ✓ |
+| tucker default init            | 52.5M | 5.116 | 166.70 | +0.358 nats (~30% ppl) |
+| tucker hc v1 (diag_bias, legacy init) | 52.5M | 4.772 | 118.20 | +0.014 nats |
+| tucker hc v2 (v1 + 2× core LR) | 52.5M | 4.770 | 118.00 | +0.012 nats |
+| **tucker hc v3 (corrected init)** | **52.5M** | **4.753** | **115.98** | **−0.005 nats** |
 
-The hc v3 unlock was the variance-preserving init the referee surfaced:
+_source: `results/exp11/{swiglu_seed0, tucker_seed0}/loss_log.json` plus the
+hill-climb dirs `results/exp11_hc{,_v2,_v3}/`._
+
+The hc v3 unlock was the variance-preserving init surfaced in a referee-style
+review of the codebase:
 - full-core `std(C) = 1/r` (not `1/sqrt(r)`) — pre-R activations now O(1) instead of O(sqrt(r))≈11
 - diagonal warm-start `C[a,a,a] = 1` (not `1/sqrt(r)`) with off-diag std `eps/r` (eps=1e-2) — aggregate off-diagonal magnitude `~eps`, so the layer evaluates exactly the SwiGLU recovery form `z_a = p_a · SiLU(q_a)` plus tiny noise at init.
 
+The −0.005 nats / 0.4% perplexity advantage at one seed is sub-noise; **the
+takeaway is that the corrected init removes the ~30% optimization penalty
+of random Tucker init**, leaving Tucker's end-to-end loss at 100M tokens
+indistinguishable from SwiGLU at this scale. The loss curves over time are
+in Appendix A2 (`fig_lm_loss_curves`) for completeness; whether the
+representational advantage ever materializes end-to-end at frontier scale is
+open.
+
 ---
 
-## Appendix A — robustness across model families (Figure 8)
+## Appendix A3 — robustness across model families (`fig_robustness_panel`)
 
 > **Claim.** The routed-CP framework is not a Qwen2.5-0.5B-specific artifact.
-> The same qualitative routing-variance shape and the same catastrophic
-> constant-α ablation hold on Qwen3-1.7B (a separate model family at ~3×
-> scale). Llama-3.2-1B was tried first but is HF-gated; the script falls back
-> as designed.
+> The same qualitative routing-variance shape and the same constant-α
+> ablation pattern (4–7 orders of magnitude perplexity penalty) hold on
+> Qwen3-1.7B (a separate model family at ~3× scale). Llama-3.2-1B was tried
+> first but is HF-gated; the script falls back as designed.
 
 ![fig_robustness_panel](figures/fig_robustness_panel.png)
 
@@ -190,7 +225,7 @@ after Llama-3.2-1B fallback) overlaid on the Qwen2.5-0.5B baseline._
 | mean Var_x[α_j(x)] (across all layers, all channels) | 0.0157 | 0.0265 |
 | α=1 / baseline perplexity ratio                       | 4.38e+04 | 1.62e+06 |
 
-Both qualitatively the same (early-layer low variance rising in late layers; constant-α destroys the model by 4–7 orders of magnitude). The larger model relies even more heavily on routing.
+Both qualitatively the same (early-layer low variance rising in late layers; constant-α destroys the model by 4–7 orders of magnitude on both families). The larger model relies even more heavily on routing.
 
 ---
 

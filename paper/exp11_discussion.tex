@@ -56,36 +56,31 @@
 % ── Framing (a): hill-climb wins ─────────────────────────────────────────
 \iftrue
 At matched parameter count ($d{=}512$, $L{=}8$, $\sim$50M params,
-$r{=}s{=}128$ for Tucker matched against $m{=}1493$ for SwiGLU), Tucker
-slightly outperforms SwiGLU at 100M FineWeb-Edu tokens
-(val\_loss $T_{\textsc{hill}}{=}4.753$ vs.\ $S{=}4.758$, perplexity
-$115.98$ vs.\ $116.48$; Figure~\ref{fig:lm_loss_curves}) when $C$ is
-initialized exactly at the SwiGLU recovery form
-$C_{aij}{=}\delta_{ai}\delta_{ij}$ with small $O(\varepsilon/r)$
-off-diagonal noise ($\varepsilon{=}10^{-2}$), so the layer evaluates the
-SwiGLU recovery form $z_a{=}p_a\,\mathrm{SiLU}(q_a)$ at initialization
-and is free to deviate into off-diagonal interactions only when training
-prefers it. Random Tucker initialization is much worse
-($T_{\textsc{default}}{=}5.116$, perplexity $166.7$, a $\sim$$30\%$
-penalty), and an initial mis-scaling of the diagonal coefficient
+$r{=}s{=}128$ for Tucker matched against $m{=}1493$ for SwiGLU), the
+variance-preserving Tucker initialization closes the optimization gap
+between Tucker and SwiGLU at 100M FineWeb-Edu tokens: Tucker is no worse
+than SwiGLU end-to-end (val\_loss $T_{\textsc{hill}}{=}4.753$ vs.\
+$S{=}4.758$ at one seed, $\Delta{=}{-}0.005$ nats, sub-noise at this
+scale; Table~\ref{tab:lm_loss}). Initialization matters far more than the
+architecture itself: random Tucker init is $\sim$$30\%$ worse in
+perplexity ($T_{\textsc{default}}{=}5.116$), and a mis-scaled
+``diagonal-bias'' warm start
 ($C_{aaa}{=}1/\sqrt{r}$ in our first hill-climb runs, yielding pre-$R$
 activations of magnitude $\sqrt{r}{\approx}11$ instead of $O(1)$ at
 $r{=}128$) cost an additional $\sim$$0.01$--$0.02$ nats relative to the
-corrected variance-preserving init (Section~\ref{sec:tucker_init}). The
-end-to-end gain over SwiGLU is small ($0.005$ nats, $\sim$$0.4\%$
-perplexity) but consistent with the architectural prediction:
-Theorem~\ref{thm:separation} says SwiGLU at this matched budget cannot
-represent layers whose per-gate cross-channel rank exceeds one, and
-stable-rank analysis of the trained Tucker (Section~\ref{sec:exp12})
-confirms the model uses interactions of mean rank $\approx 4$ per gate,
-above the aligned-SwiGLU rank-one ceiling. Distillation
-(Section~\ref{sec:exp14b}) makes this representational gap explicit at
-the layer level: a Tucker student fitted to a Tucker teacher is
-$\sim$$22\%$ more accurate than a parameter-matched SwiGLU student. The
-end-to-end LM result is the smaller of the two effects --- as expected,
-optimization at workshop training scale absorbs most of the layer-level
-representational advantage --- but it goes in the predicted direction
-once the variance-preserving warm start removes the optimization gap.
+corrected init (Section~\ref{sec:tucker_init}). $C$ is initialized at the
+SwiGLU recovery form $C_{aij}{=}\delta_{ai}\delta_{ij}$ with small
+$O(\varepsilon/r)$ off-diagonal noise ($\varepsilon{=}10^{-2}$), so the
+layer evaluates $z_a{=}p_a\,\mathrm{SiLU}(q_a)$ at initialization and is
+free to deviate into off-diagonal interactions only when training prefers
+it. The end-to-end LM result is consistent with --- but does not by
+itself establish --- the architectural prediction; the binding evidence
+comes from layer-level probes. Stable-rank analysis of the trained Tucker
+(Section~\ref{sec:exp12}) shows mean per-gate rank $\approx$$4$, above
+the aligned-SwiGLU rank-one ceiling; distillation
+(Section~\ref{sec:exp14b}) makes the representational gap explicit at the
+layer level, with a Tucker student fitted to a Tucker teacher
+$\sim$$22\%$ more accurate than a parameter-matched SwiGLU student.
 \fi
 
 % ── Framing (b): hill-climb close, distillation framing ─────────────────
