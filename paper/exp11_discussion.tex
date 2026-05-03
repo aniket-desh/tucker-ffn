@@ -5,12 +5,16 @@
 % default-init tucker (T_default), and diagonal-bias-init tucker (T_hill).
 %
 %   T_default = 5.116  (results/exp11/tucker_seed0/loss_log.json)
-%   T_hill    = 4.772  (results/exp11_hc/tucker_seed0/loss_log.json)
+%   T_hill_v1 = 4.772  (results/exp11_hc/tucker_seed0/loss_log.json)
+%   T_hill_v2 = 4.770  (results/exp11_hc_v2/tucker_seed0/loss_log.json,
+%                       v1 + --tucker_core_lr_scale 2.0)
 %   S         = 4.758  (results/exp11/swiglu_seed0/loss_log.json)
 %
-%   delta_hill_swiglu = T_hill - S = +0.014  (~1.5% perplexity gap)
-%   delta_hill_default = T_default - T_hill = +0.344  (~30% perplexity reduction
-%                                                       from the hill-climb)
+%   delta_hill_v1_swiglu = T_hill_v1 - S = +0.014  (~1.5% perplexity gap)
+%   delta_hill_v2_swiglu = T_hill_v2 - S = +0.012  (~1.3% perplexity gap)
+%   delta_hill_v2_default = T_default - T_hill_v2 = +0.346  (~30% perplexity
+%                                                            reduction from
+%                                                            the hill-climb)
 %
 % framing rule (per CLAUDE_CODE_PROMPT §Gap 3):
 %   (a) hill-climb wins        T_hill < S - 0.005
