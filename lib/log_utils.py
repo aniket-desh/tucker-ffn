@@ -1,4 +1,4 @@
-"""bracketed-tag logging. see docs/format.md for convention."""
+"""bracketed-tag logging used across all experiments and library modules."""
 
 
 def log(tag, msg):

@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 
 for seed in 1 2; do
   echo "=== SwiGLU seed=$seed ==="
-  uv run python experiments/exp11_train_lm.py \
+  .venv/bin/python experiments/exp11_train_lm.py \
     --archs swiglu --seeds "$seed" \
     --d 512 --n_heads 8 --n_layers 8 --seq_len 1024 \
     --batch_size 24 --max_tokens 100000000 --peak_lr 3e-4 --warmup_steps 200 \
@@ -15,7 +15,7 @@ for seed in 1 2; do
     --results_dir "results/exp11_seed${seed}"
 
   echo "=== Tucker hc_v3 seed=$seed ==="
-  uv run python experiments/exp11_train_lm.py \
+  .venv/bin/python experiments/exp11_train_lm.py \
     --archs tucker --seeds "$seed" \
     --d 512 --n_heads 8 --n_layers 8 --seq_len 1024 \
     --batch_size 24 --max_tokens 100000000 --peak_lr 3e-4 --warmup_steps 200 \

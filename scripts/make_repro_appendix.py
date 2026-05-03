@@ -48,7 +48,7 @@ separate parameter group with weight decay $0$. Gradient clipping at $1.0$.
 LR schedule: linear warmup over $1\%$ of total steps, cosine decay to $1\%$
 of peak; peak LR ${lm.get('lr', 3e-4)}$. Precision: bf16 autocast for the
 forward/backward, fp32 master parameters and optimizer state.
-Hardware: single NVIDIA A40 (46~GB).
+Hardware: single NVIDIA A100 (UIUC NCSA Delta).
 Total: $\approx{lm.get('n_steps', 6000)}$ optimizer steps,
 ${batch_tokens * lm.get('n_steps', 6000) // 10**6}$M training tokens.
 We log validation cross-entropy every $\approx 2$M tokens on a held-out
