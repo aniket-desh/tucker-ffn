@@ -25,11 +25,11 @@ delta = final - SW_REF
 # emit a single \tabular row + a comment line. The LaTeX agent decides where
 # to splice it into Table 2.
 row = (
-    rf"% Diagonal-core Tucker from scratch (same arch, core constrained to "
-    rf"superdiagonal). Source: {used}\n"
+    f"% Diagonal-core Tucker from scratch (same arch, core constrained to "
+    f"superdiagonal). Source: {used}\n"
     rf"\textsc{{Tucker-diagonal}} (var-preserving, single seed) "
     rf"& $52.5$M & ${final:.3f}$ & ${ppl:.2f}$ & "
-    rf"${delta:+.3f}$ \\\\" "\n"
+    rf"${delta:+.3f}$ \\" + "\n"
 )
 pathlib.Path("snippets").mkdir(exist_ok=True)
 pathlib.Path("snippets/diag_tucker_row.tex").write_text(row)
