@@ -1,0 +1,87 @@
+% exp11 (from-scratch matched-budget LM training) discussion blocks.
+% pick ONE of the three blocks below and toggle its \iftrue / \iffalse.
+%
+% decision rule: read SUMMARY.md and pull final val_loss for swiglu (S),
+% default-init tucker (T_default), and diagonal-bias-init tucker (T_hill).
+%
+%   T_default = 5.116  (results/exp11/tucker_seed0/loss_log.json)
+%   T_hill    = 4.772  (results/exp11_hc/tucker_seed0/loss_log.json)
+%   S         = 4.758  (results/exp11/swiglu_seed0/loss_log.json)
+%
+%   delta_hill_swiglu = T_hill - S = +0.014  (~1.5% perplexity gap)
+%   delta_hill_default = T_default - T_hill = +0.344  (~30% perplexity reduction
+%                                                       from the hill-climb)
+%
+% framing rule (per CLAUDE_CODE_PROMPT §Gap 3):
+%   (a) hill-climb wins        T_hill < S - 0.005
+%   (b) hill-climb close/lose  T_hill >= S, T_default > T_hill   <-- current
+%   (c) cut exp11              both tucker variants lose decisively
+%                              (T_hill > S + 0.05)
+%
+% with current numbers framing (b) applies: hill-climb closed essentially the
+% entire optimization gap (diagonal_bias_init halves the perplexity gap
+% relative to swiglu) but does not strictly beat it. if the v2 hill-climb
+% (--tucker_core_lr_scale 2.0, results/exp11_hc_v2/) lands below 4.753, switch
+% to framing (a) and update the numbers; if v2 also lands close-but-behind,
+% keep framing (b) and append the v2 number to the table.
+
+% ── Framing (a): hill-climb wins ─────────────────────────────────────────
+\iffalse
+At matched parameter count ($d{=}512$, $L{=}8$, $\sim$50M params,
+$r{=}s{=}128$ for Tucker matched against $m{=}1493$ for SwiGLU), Tucker
+matches or exceeds SwiGLU's validation loss at 100M FineWeb-Edu tokens
+when $C$ is initialized with a superdiagonal bias so that the layer starts
+in the SwiGLU-equivalent subspace and is free to deviate into off-diagonal
+interactions only when training prefers it
+(\(T_{\textsc{hill}}{=}T_HILL\) vs.\ \(S{=}S_VAL\); Figure~\ref{fig:lm_loss_curves}).
+Random Tucker initialization does not reach this regime at our scale
+(\(T_{\textsc{default}}{=}T_DEFAULT\)), suggesting the representational gap
+of Theorem~\ref{thm:separation} is real but only exploitable end-to-end
+under a SwiGLU-aware warm start. Stable-rank analysis of the resulting
+$V_j$ confirms the hill-climbed model uses cross-channel interactions of
+mean rank $\approx 17$ per gate (Section~\ref{sec:exp12}), well above the
+rank-one-per-gate ceiling that an aligned SwiGLU of width $r$ would impose.
+\fi
+
+% ── Framing (b): hill-climb close, distillation framing ─────────────────
+\iftrue
+At matched parameter count ($d{=}512$, $L{=}8$, $\sim$50M params,
+$r{=}s{=}128$ for Tucker matched against $m{=}1493$ for SwiGLU), SwiGLU
+slightly outperforms Tucker on 100M FineWeb-Edu tokens
+(val\_loss $S{=}4.758$ vs.\ $T_{\textsc{hill}}{=}4.772$, a $\sim$$1.5\%$
+perplexity gap; Figure~\ref{fig:lm_loss_curves}). Random Tucker
+initialization is much worse ($T_{\textsc{default}}{=}5.116$), and biasing
+$C$ toward its superdiagonal at initialization closes nearly all of that
+gap, indicating that the optimization landscape at our scale favors the
+diagonal-restricted parameterization but the residual gap is small once
+the optimizer is given a SwiGLU-equivalent starting point. The
+representational gap that Theorem~\ref{thm:separation} predicts is
+independently confirmed by distillation (Section~\ref{sec:exp14b}): when
+the teacher is a trained Tucker layer, a Tucker student matches it
+roughly $22\%$ more accurately than a parameter-matched SwiGLU student
+at the same $r{=}s{=}128$ matched-budget configuration. Stable-rank
+analysis of the hill-climbed Tucker (Section~\ref{sec:exp12}) finds mean
+$\mathrm{rank}(V_j) \approx 17$ per gate, well above the rank-one-per-gate
+ceiling an aligned SwiGLU of width $r$ would impose, so the model is
+demonstrably exploiting cross-channel structure that Theorem~1 forbids
+SwiGLU from representing. The diagonal restriction therefore does cost
+representational capacity at the layer level (Theorem~\ref{thm:separation}
+is empirically binding), but the matching optimization gap absorbs most of
+the resulting end-to-end advantage at workshop training scale; whether
+the representational advantage materializes end-to-end at frontier scale
+is open.
+\fi
+
+% ── Framing (c): cut exp11 ───────────────────────────────────────────────
+\iffalse
+We do not include a from-scratch language-modeling comparison in the main
+text: at our matched-budget training scale ($\sim$50M params, 100M tokens)
+the optimization gap between random-init Tucker and SwiGLU dominates the
+representational signal that Theorem~\ref{thm:separation} surfaces. The
+diagonal-projection cost (Section~\ref{sec:exp13}) and the matched-budget
+distillation comparison (Section~\ref{sec:exp14b}) measure the
+representational signal directly without confounding it with optimization,
+and we leave a careful study of Tucker training dynamics --- including
+whether the diagonal-bias initialization gap closes with longer training,
+larger models, or different optimizers --- to future work.
+\fi

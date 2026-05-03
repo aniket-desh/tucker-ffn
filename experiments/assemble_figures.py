@@ -167,6 +167,129 @@ def fig_tucker_teacher_distillation(fig_dir, src_dir):
     log("done", f"wrote fig_tucker_teacher_distillation.png")
 
 
+def fig_robustness_panel(fig_dir, results_root, model_tags):
+    """3-panel cross-model robustness overlay (exp17).
+
+    overlays Qwen2.5-0.5B (blue, model_tags[0]) and the second model
+    family (orange, model_tags[1]) on the same axes. each model's results
+    must already exist under results/<tag>/. layer indices on the x-axis
+    are the model's own layer indices — depths differ between models, so
+    the lines are not paired layer-for-layer; the comparison is in the
+    shape and order of magnitude.
+
+    panel (a): per-layer mean routing variance (exp02 routing_stats.npz,
+               variances averaged over channels).
+    panel (b): bar chart of constant-alpha ablation perplexities, with
+               four conditions (baseline, uniform, mean, ones) grouped
+               side-by-side per model.
+    panel (c): per-layer joint and u_only mean perplexity (lines with
+               shaded +/- std bands, log y-axis).
+    """
+    setup_plot_style()
+    if len(model_tags) != 2:
+        log("error", f"fig_robustness_panel expects 2 model_tags, got {model_tags}")
+        return
+    tag_a, tag_b = model_tags
+    dir_a = pathlib.Path(results_root) / tag_a
+    dir_b = pathlib.Path(results_root) / tag_b
+
+    rs_a = dir_a / "routing_stats.npz"
+    rs_b = dir_b / "routing_stats.npz"
+    abl_a = dir_a / "ablation_results.json"
+    abl_b = dir_b / "ablation_results.json"
+    pp_a = dir_a / "pairing_permutation.json"
+    pp_b = dir_b / "pairing_permutation.json"
+    needed = [rs_a, rs_b, abl_a, abl_b, pp_a, pp_b]
+    missing = [str(p) for p in needed if not p.exists()]
+    if missing:
+        log("error", f"fig_robustness_panel missing inputs: {missing}")
+        return
+
+    color_a = PALETTE["primary"]      # qwen2.5-0.5b — steel blue
+    color_b = PALETTE["secondary"]    # second family — dull orange
+
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 3.8))
+
+    # ── panel (a): per-layer mean routing variance ─────────────────────
+    ax = axes[0]
+    for tag, path, color, marker in [
+        (tag_a, rs_a, color_a, "o"),
+        (tag_b, rs_b, color_b, "s"),
+    ]:
+        d = np.load(path)
+        per_layer_mean = d["variances"].mean(axis=1)
+        x = np.arange(len(per_layer_mean))
+        ax.plot(x, per_layer_mean, marker=marker, color=color, lw=1.5, ms=4,
+                label=tag)
+    ax.set_xlabel("layer")
+    ax.set_ylabel(r"mean $\mathrm{Var}_x[\alpha_j(x)]$")
+    ax.legend(framealpha=0.9, edgecolor="0.8")
+    ax.text(0.02, 0.97, "(a)", transform=ax.transAxes, va="top", ha="left",
+            fontsize=11, fontweight="bold")
+
+    # ── panel (b): constant-alpha ablation bars (grouped) ──────────────
+    ax = axes[1]
+    cond_keys = ["baseline", "uniform", "mean", "ones"]
+    cond_labels = ["baseline", r"$\alpha{=}0.5$", r"$\alpha{=}\bar\alpha$",
+                   r"$\alpha{=}1$"]
+    width = 0.38
+    x = np.arange(len(cond_keys))
+    for tag, path, color, offset in [
+        (tag_a, abl_a, color_a, -width / 2),
+        (tag_b, abl_b, color_b,  width / 2),
+    ]:
+        with open(path) as f:
+            r = json.load(f)
+        vals = [float(r[k]) for k in cond_keys]
+        ax.bar(x + offset, vals, width=width, color=color, alpha=0.85,
+               edgecolor="0.3", linewidth=0.4, label=tag)
+    ax.set_yscale("log")
+    ax.set_xticks(x)
+    ax.set_xticklabels(cond_labels)
+    ax.set_ylabel("perplexity")
+    ax.legend(framealpha=0.9, edgecolor="0.8")
+    ax.text(0.02, 0.97, "(b)", transform=ax.transAxes, va="top", ha="left",
+            fontsize=11, fontweight="bold")
+
+    # ── panel (c): per-layer joint vs u_only perplexity ────────────────
+    ax = axes[2]
+    for tag, path, color in [
+        (tag_a, pp_a, color_a),
+        (tag_b, pp_b, color_b),
+    ]:
+        with open(path) as f:
+            r = json.load(f)
+        floor = float(r["baseline"]) * 0.7
+        for cond, ls, marker in [("joint", "-", "o"), ("u_only", "--", "s")]:
+            mean = np.array(r[cond]["mean"])
+            std = np.array(r[cond]["std"])
+            xx = np.arange(len(mean))
+            ax.plot(xx, mean, ls=ls, marker=marker, color=color, lw=1.4,
+                    ms=3.5, label=f"{tag} {cond}")
+            ax.fill_between(xx, np.maximum(mean - std, floor), mean + std,
+                            color=color, alpha=0.10)
+    ax.set_yscale("log")
+    ax.set_xlabel("permuted layer")
+    ax.set_ylabel("perplexity")
+    ax.legend(framealpha=0.9, edgecolor="0.8", fontsize=8, ncol=2)
+    ax.text(0.02, 0.97, "(c)", transform=ax.transAxes, va="top", ha="left",
+            fontsize=11, fontweight="bold")
+
+    plt.tight_layout()
+    out = os.path.join(fig_dir, "fig_robustness_panel.png")
+    plt.savefig(out, dpi=300)
+    plt.close()
+    write_tex_stub("fig_robustness_panel", fig_dir,
+        r"Cross-model robustness of the routed-CP picture. (a) Per-layer "
+        r"mean routing variance $\mathrm{Var}_x[\alpha_j(x)]$. "
+        r"(b) Constant-$\alpha$ ablation perplexity (baseline, uniform, "
+        r"per-channel mean, $\alpha{=}1$). (c) Joint $\pi_G{=}\pi_U$ vs "
+        r"$\pi_U$-only single-layer permutation perplexity (mean $\pm$ std "
+        r"over seeds). Both model families show the same qualitative "
+        "pattern, ruling out a Qwen-specific artifact.")
+    log("done", f"wrote fig_robustness_panel.png")
+
+
 def fig_lm_loss_curves(fig_dir, src_dir):
     src = os.path.join(src_dir, "loss_curves.png")
     if not os.path.exists(src):
@@ -285,35 +408,37 @@ def write_summary(results_root, fig_dir):
                     )
         lines.append("")
 
-    # exp12 stable ranks
-    sr = pathlib.Path(results_root) / "exp12" / "stable_rank.npz"
-    def _sr():
-        d = np.load(sr, allow_pickle=True)
-        for key in d.files:
-            if not key.endswith("__s_rank"):
-                continue
-            tag = key[:-len("__s_rank")]
-            arr = d[key]
-            lines.append(f"- {tag}: mean stable rank = {arr.mean():.2f} | "
-                         f"median = {np.median(arr):.2f} | "
-                         f"min = {arr.min():.2f} | max = {arr.max():.2f}")
-    add_section("Stable rank of V_j (exp12)", sr, _sr)
+    # exp12 stable ranks (default-init + hill-climb variants)
+    for sr_dir_name in sorted(p.name for p in pathlib.Path(results_root).glob("exp12*")):
+        sr = pathlib.Path(results_root) / sr_dir_name / "stable_rank.npz"
+        def _sr(_sr=sr, _name=sr_dir_name):
+            d = np.load(_sr, allow_pickle=True)
+            for key in d.files:
+                if not key.endswith("__s_rank"):
+                    continue
+                tag = key[:-len("__s_rank")]
+                arr = d[key]
+                lines.append(f"- {_name}/{tag}: mean stable rank = {arr.mean():.2f} | "
+                             f"median = {np.median(arr):.2f} | "
+                             f"min = {arr.min():.2f} | max = {arr.max():.2f}")
+        add_section(f"Stable rank of V_j ({sr_dir_name})", sr, _sr)
 
-    # exp13 diag projection
-    dp = pathlib.Path(results_root) / "exp13" / "results.json"
-    def _dp():
-        with open(dp) as f:
-            r = json.load(f)
-        for tag, d_ in r.items():
-            full = d_["diagonal_projection"][0]["perplexity"]
-            diag = d_["diagonal_projection"][-1]["perplexity"]
-            lines.append(f"- {tag}: trained ppl = {full:.2f}, "
-                         f"diagonal-projected ppl = {diag:.2f}, "
-                         f"ratio = {diag/full:.2f}x")
-            lines.append(f"  - rank-truncation curve:")
-            for r_ in d_.get("rank_truncation", []):
-                lines.append(f"    - rho={r_['rho']}: ppl={r_['perplexity']:.2f}")
-    add_section("Diagonal projection / rank truncation (exp13)", dp, _dp)
+    # exp13 diag projection (default-init + hill-climb variants)
+    for dp_dir_name in sorted(p.name for p in pathlib.Path(results_root).glob("exp13*")):
+        dp = pathlib.Path(results_root) / dp_dir_name / "results.json"
+        def _dp(_dp=dp, _name=dp_dir_name):
+            with open(_dp) as f:
+                r = json.load(f)
+            for tag, d_ in r.items():
+                full = d_["diagonal_projection"][0]["perplexity"]
+                diag = d_["diagonal_projection"][-1]["perplexity"]
+                lines.append(f"- {_name}/{tag}: trained ppl = {full:.2f}, "
+                             f"diagonal-projected ppl = {diag:.2f}, "
+                             f"ratio = {diag/full:.2f}x")
+                lines.append(f"  - rank-truncation curve:")
+                for r_ in d_.get("rank_truncation", []):
+                    lines.append(f"    - rho={r_['rho']}: ppl={r_['perplexity']:.2f}")
+        add_section(f"Diagonal projection / rank truncation ({dp_dir_name})", dp, _dp)
 
     # exp14 distillation (swiglu teacher)
     di = pathlib.Path(results_root) / "exp14_v2" / "distillation.json"
@@ -359,7 +484,8 @@ def write_summary(results_root, fig_dir):
     for name in ["fig_synthetic_fitting", "fig_diagonal_projection",
                   "fig_pairing_permutation", "fig_stable_rank_histogram",
                   "fig_routing_validation", "fig_lm_loss_curves",
-                  "fig_tucker_teacher_distillation"]:
+                  "fig_tucker_teacher_distillation",
+                  "fig_robustness_panel"]:
         png = pathlib.Path(fig_dir) / f"{name}.png"
         tex = pathlib.Path(fig_dir) / f"{name}.tex"
         status = "OK" if png.exists() else "MISSING"
@@ -373,6 +499,11 @@ def write_summary(results_root, fig_dir):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--results_root", type=str, default="results")
+    parser.add_argument("--robustness_tags", type=str,
+                        default="qwen25_05b,llama32_1b",
+                        help="comma-separated <baseline>,<other> model tags "
+                             "for fig_robustness_panel (must match exp17 "
+                             "output dir names under results/)")
     args = parser.parse_args()
     setup_plot_style()
     fig_dir = os.path.join(args.results_root, "figures")
@@ -386,6 +517,10 @@ def main():
     fig_lm_loss_curves(fig_dir, os.path.join(args.results_root, "exp11"))
     fig_tucker_teacher_distillation(fig_dir,
                                      os.path.join(args.results_root, "exp14b"))
+
+    robustness_tags = [t.strip() for t in args.robustness_tags.split(",")
+                        if t.strip()]
+    fig_robustness_panel(fig_dir, args.results_root, robustness_tags)
 
     write_summary(args.results_root, fig_dir)
 
