@@ -97,7 +97,7 @@ def main():
             "mean_offdiag": float(np.mean(offdiag_per_layer)),
         }
 
-        # heatmaps: rows = layer_picks, cols = alpha_picks
+        # heatmaps: rows = layer_picks, cols = output-index (o) picks
         fig, axes = plt.subplots(len(layer_picks), len(alpha_picks),
                                   figsize=(2.4 * len(alpha_picks),
                                            2.4 * len(layer_picks)),
@@ -113,9 +113,9 @@ def main():
                 im = axes[i, j].imshow(C[al], cmap="RdBu_r", vmin=-vmax,
                                         vmax=vmax, aspect="equal")
                 if i == 0:
-                    axes[i, j].set_title(fr"$\alpha={al}$")
+                    axes[i, j].set_title(fr"$o={al}$")
                 if j == 0:
-                    axes[i, j].set_ylabel(f"layer {li}\n$i$")
+                    axes[i, j].set_ylabel(f"Layer {li}\n$i$")
                 if i == len(layer_picks) - 1:
                     axes[i, j].set_xlabel(r"$j$")
         plt.tight_layout()

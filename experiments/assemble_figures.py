@@ -157,17 +157,22 @@ def fig_routing_validation(fig_dir, src_dir):
 
 
 def fig_tucker_teacher_distillation(fig_dir, src_dir):
-    src = os.path.join(src_dir, "tucker_teacher_distillation.png")
-    if not os.path.exists(src):
-        log("error", f"missing {src}")
+    src_png = os.path.join(src_dir, "tucker_teacher_distillation.png")
+    src_pdf = os.path.join(src_dir, "tucker_teacher_distillation.pdf")
+    if not os.path.exists(src_png):
+        log("error", f"missing {src_png}")
         return
-    dst = os.path.join(fig_dir, "fig_tucker_teacher_distillation.png")
-    shutil.copyfile(src, dst)
+    shutil.copyfile(src_png,
+                     os.path.join(fig_dir, "fig_tucker_teacher_distillation.png"))
+    if os.path.exists(src_pdf):
+        shutil.copyfile(src_pdf,
+                         os.path.join(fig_dir, "fig_tucker_teacher_distillation.pdf"))
     write_tex_stub("fig_tucker_teacher_distillation", fig_dir,
-        "Distillation val MSE for SwiGLU and Tucker FFN students fit to a "
-        r"trained Tucker teacher layer (matched parameter budgets, $r{=}128$). "
-        "Tucker matches the teacher more accurately at the larger budgets, "
-        "where its expressivity advantage exceeds the optimization gap.")
+        r"Distillation val MSE for SwiGLU and Tucker FFN students fit to a "
+        r"trained Tucker teacher layer ($r{=}s{=}128$, $d{=}512$, layer "
+        r"$\ell{=}4$) at matched parameter budgets. Tucker matches the teacher "
+        r"more accurately at the larger budgets, where its expressivity "
+        r"advantage exceeds the optimization gap.")
     log("done", f"wrote fig_tucker_teacher_distillation.png")
 
 

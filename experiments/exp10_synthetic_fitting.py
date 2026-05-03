@@ -237,12 +237,21 @@ def run_synthetic_fitting(k_values, d, n_train, n_val, n_seeds, n_steps,
 
 
 def plot_synthetic_fitting(npz_path, results_dir):
-    """log-log val mse vs m, one panel per k, with predicted knee at m=k^2."""
+    """log-log val mse vs m, one panel per k, with predicted knee at m=k^2.
+    overlays the SVD-constructed aligned student at m=k^2 if available
+    (results_dir/svd_construction.json)."""
     setup_plot_style()
     data = np.load(npz_path, allow_pickle=True)
     k_values = data["k_values"]
     students = list(data["students"])
     n_panels = len(k_values)
+
+    # optional SVD construction overlay
+    svd_path = os.path.join(results_dir, "svd_construction.json")
+    svd = {}
+    if os.path.exists(svd_path):
+        with open(svd_path) as f:
+            svd = json.load(f)
 
     fig, axes = plt.subplots(1, n_panels, figsize=(4.0 * n_panels, 3.6),
                               sharey=True)
@@ -263,6 +272,16 @@ def plot_synthetic_fitting(npz_path, results_dir):
             best = np.nanmin(val_mse[si], axis=-1)
             ax.plot(m_values, best, marker=marker, ls=ls, color=color,
                     lw=1.5, ms=5, label=label)
+        # SVD-constructed aligned student at m=k^2 (no training; should hit
+        # machine precision, verifying the Theorem 4.2 upper bound is attained
+        # without optimization)
+        if str(int(k)) in svd:
+            entry = svd[str(int(k))]
+            ax.plot([entry["m"]], [max(entry["val_mse"], 1e-15)],
+                    marker="*", ms=14, color=PALETTE["neutral"],
+                    markeredgecolor="black", markeredgewidth=0.8,
+                    linestyle="None",
+                    label="Aligned SwiGLU (SVD construction)")
         ax.axvline(k * k, color=PALETTE["neutral"], ls=":", lw=0.8,
                    label=fr"$m = k^2 = {k*k}$")
         ax.set_xscale("log")
@@ -270,11 +289,13 @@ def plot_synthetic_fitting(npz_path, results_dir):
         ax.set_xlabel(r"SwiGLU hidden width $m$")
         ax.set_title(fr"$k = {k}$")
     axes[0].set_ylabel("Validation MSE")
-    axes[-1].legend(framealpha=0.9, edgecolor="0.8", loc="best", fontsize=8)
+    axes[-1].legend(framealpha=0.9, edgecolor="0.8", loc="best", fontsize=7)
 
     plt.tight_layout()
     out = os.path.join(results_dir, "synthetic_fitting.png")
     plt.savefig(out)
+    plt.savefig(out.replace(".png", ".pdf"), bbox_inches="tight",
+                pad_inches=0.02)
     plt.close()
     log("done", f"saved synthetic_fitting.png -> {results_dir}/")
 

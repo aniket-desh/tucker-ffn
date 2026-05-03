@@ -243,12 +243,17 @@ def main():
     ax.errorbar(xs, tk_means, yerr=tk_stds, marker="s", color=PALETTE["ablation"],
                 lw=1.5, label="Tucker (student)", capsize=3)
     ax.set_xlabel("FFN parameter budget")
-    ax.set_ylabel(f"Distillation val MSE\n(Tucker teacher, $r{{=}}{r_teacher}$)")
+    ax.set_ylabel("Distillation val MSE")
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.legend(framealpha=0.9, edgecolor="0.8")
     plt.tight_layout()
-    plt.savefig(os.path.join(args.results_dir, "tucker_teacher_distillation.png"))
+    plt.savefig(os.path.join(args.results_dir,
+                              "tucker_teacher_distillation.pdf"),
+                 bbox_inches="tight", pad_inches=0.02)
+    plt.savefig(os.path.join(args.results_dir,
+                              "tucker_teacher_distillation.png"),
+                 bbox_inches="tight", pad_inches=0.02, dpi=200)
     plt.close()
     log("done", f"saved tucker_teacher_distillation.png -> {args.results_dir}/")
 
