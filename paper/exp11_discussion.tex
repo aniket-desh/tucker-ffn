@@ -57,29 +57,34 @@
 \iftrue
 At matched parameter count ($d{=}512$, $L{=}8$, $\sim$50M params,
 $r{=}s{=}128$ for Tucker matched against $m{=}1493$ for SwiGLU), the
-variance-preserving Tucker initialization closes the optimization gap
-between Tucker and SwiGLU at 100M FineWeb-Edu tokens: Tucker is no worse
-than SwiGLU end-to-end (val\_loss $T_{\textsc{hill}}{=}4.753$ vs.\
-$S{=}4.758$ at one seed, $\Delta{=}{-}0.005$ nats, sub-noise at this
-scale; Table~\ref{tab:lm_loss}). Initialization matters far more than the
-architecture itself: random Tucker init is $\sim$$30\%$ worse in
-perplexity ($T_{\textsc{default}}{=}5.116$), and a mis-scaled
-``diagonal-bias'' warm start
-($C_{aaa}{=}1/\sqrt{r}$ in our first hill-climb runs, yielding pre-$R$
-activations of magnitude $\sqrt{r}{\approx}11$ instead of $O(1)$ at
-$r{=}128$) cost an additional $\sim$$0.01$--$0.02$ nats relative to the
-corrected init (Section~\ref{sec:tucker_init}). $C$ is initialized at the
-SwiGLU recovery form $C_{aij}{=}\delta_{ai}\delta_{ij}$ with small
-$O(\varepsilon/r)$ off-diagonal noise ($\varepsilon{=}10^{-2}$), so the
-layer evaluates $z_a{=}p_a\,\mathrm{SiLU}(q_a)$ at initialization and is
-free to deviate into off-diagonal interactions only when training prefers
-it. The end-to-end LM result is consistent with --- but does not by
-itself establish --- the architectural prediction; the binding evidence
-comes from layer-level probes. Stable-rank analysis of the trained Tucker
-(Section~\ref{sec:exp12}) shows mean per-gate rank $\approx$$4$, above
-the aligned-SwiGLU rank-one ceiling; distillation
-(Section~\ref{sec:exp14b}) makes the representational gap explicit at the
-layer level, with a Tucker student fitted to a Tucker teacher
+variance-preserving Tucker initialization brings Tucker to parity with
+SwiGLU at 100M FineWeb-Edu tokens. Across $n{=}3$ seeds each, final
+validation loss is $4.753 \pm 0.011$ (SwiGLU; perplexity $115.88$) vs.\
+$4.760 \pm 0.010$ (Tucker, var-preserving init; perplexity $116.79$),
+$\Delta{=}{+}0.008$ nats, well within one standard deviation; the two
+architectures are statistically indistinguishable end-to-end at this
+training scale (Table~\ref{tab:lm_loss}). Initialization matters far
+more than the architecture itself: random Tucker init is $\sim$$30\%$
+worse in perplexity ($T_{\textsc{default}}{=}5.116$, single seed), a
+mis-scaled diagonal-bias warm start ($C_{aaa}{=}1/\sqrt{r}$ in our first
+hill-climb runs, yielding pre-$R$ activations of magnitude
+$\sqrt{r}{\approx}11$ instead of $O(1)$ at $r{=}128$) cost an additional
+$\sim$$0.01$--$0.02$ nats, and a Tucker layer with the core constrained
+to its superdiagonal throughout training underperforms even random-init
+full-Tucker (val\_loss $5.214$, $+0.461$ nats), ruling out a ``diagonal
+is enough'' reading (Section~\ref{sec:tucker_init}). $C$ is initialized
+at the SwiGLU recovery form $C_{oij}{=}\delta_{oi}\delta_{ij}$ with
+small $O(\varepsilon/r)$ off-diagonal noise ($\varepsilon{=}10^{-2}$),
+so the layer evaluates $z_o{=}p_o\,\mathrm{SiLU}(q_o)$ at initialization
+and is free to deviate into off-diagonal interactions only when training
+prefers it (we use $o$ for the core output index throughout, reserving
+$\alpha_j(x)$ for the routing scalar). The end-to-end LM result by
+itself does not establish the architectural prediction; the binding
+evidence comes from layer-level probes. Stable-rank analysis of the
+trained Tucker (Section~\ref{sec:exp12}) shows mean per-gate rank
+$\approx$$4$, above the aligned-SwiGLU rank-one ceiling; distillation
+(Section~\ref{sec:exp14b}) makes the representational gap explicit at
+the layer level, with a Tucker student fitted to a Tucker teacher
 $\sim$$22\%$ more accurate than a parameter-matched SwiGLU student.
 \fi
 

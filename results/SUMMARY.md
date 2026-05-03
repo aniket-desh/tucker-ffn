@@ -184,35 +184,45 @@ Crossover at ~7×10⁵ params. At the matched-budget LM config (r=s=128), Tucker
 ## §5.4 End-to-end LM training — variance-preserving init closes the optimization gap (Table 1)
 
 > **Claim.** At matched parameter count from scratch on 100M tokens of
-> FineWeb-Edu, with the variance-preserving init the Tucker FFN is **no
-> worse than** SwiGLU end-to-end. The end-to-end Δ is sub-noise at one seed;
-> the binding evidence for the architectural prediction comes from the
-> layer-level probes (§5.2 stable rank, §5.3 distillation), not from this
-> end-to-end loss number.
+> FineWeb-Edu, with the variance-preserving init the Tucker FFN is
+> **statistically indistinguishable** from SwiGLU end-to-end (n=3 seeds
+> each, Δ = +0.008 nats, well within 1σ). The architecture is not the
+> bottleneck; the binding evidence for the architectural prediction comes
+> from the layer-level probes (§5.2 stable rank, §5.3 distillation), not
+> from this end-to-end loss number.
 
-| arch / init | params | val_loss | perplexity | Δ vs swiglu |
+| arch / init | params | val_loss (mean ± std) | perplexity | Δ vs swiglu |
 |---|---|---|---|---|
-| swiglu (matched m=1493)        | 52.5M | 4.758 | 116.48 | — |
-| tucker default init            | 52.5M | 5.116 | 166.70 | +0.358 nats (~30% ppl) |
-| tucker hc v1 (diag_bias, legacy init) | 52.5M | 4.772 | 118.20 | +0.014 nats |
-| tucker hc v2 (v1 + 2× core LR) | 52.5M | 4.770 | 118.00 | +0.012 nats |
-| **tucker hc v3 (corrected init)** | **52.5M** | **4.753** | **115.98** | **−0.005 nats** |
+| **swiglu** (matched m=1493, n=3) | 52.5M | **4.753 ± 0.011** | 115.88 | — |
+| tucker default init (n=1)        | 52.5M | 5.116 | 166.70 | +0.363 nats (~30% ppl) |
+| tucker hc v1 (diag_bias, legacy init, n=1) | 52.5M | 4.772 | 118.20 | +0.019 nats |
+| tucker hc v2 (v1 + 2× core LR, n=1)        | 52.5M | 4.770 | 118.00 | +0.017 nats |
+| **tucker hc v3 (var-preserving init, n=3)** | **52.5M** | **4.760 ± 0.010** | **116.79** | **+0.008 nats (sub-noise)** |
+| tucker-diagonal (var-preserving, n=1)      | 52.5M | 5.214 | 183.86 | +0.461 nats (worse than default-init) |
 
-_source: `results/exp11/{swiglu_seed0, tucker_seed0}/loss_log.json` plus the
-hill-climb dirs `results/exp11_hc{,_v2,_v3}/`._
+Per-seed val_loss (final, 100M tokens):
+- swiglu: seed0 = 4.7578, seed1 = 4.7396, seed2 = 4.7603
+- tucker (hc_v3): seed0 = 4.7534, seed1 = 4.7556, seed2 = 4.7721
+
+_source: `results/exp11/{swiglu_seed0, tucker_seed0}/loss_log.json`,
+`results/exp11_seed{1,2}/swiglu_seed{1,2}/`,
+`results/exp11_hc_v3{,_seed1,_seed2}/tucker_seed{0,1,2}/`,
+plus the older hill-climb dirs `results/exp11_hc{,_v2}/` and
+`results/exp11_diag/` for the diagonal-only ablation._
 
 The hc v3 unlock was the variance-preserving init surfaced in a referee-style
 review of the codebase:
 - full-core `std(C) = 1/r` (not `1/sqrt(r)`) — pre-R activations now O(1) instead of O(sqrt(r))≈11
 - diagonal warm-start `C[a,a,a] = 1` (not `1/sqrt(r)`) with off-diag std `eps/r` (eps=1e-2) — aggregate off-diagonal magnitude `~eps`, so the layer evaluates exactly the SwiGLU recovery form `z_a = p_a · SiLU(q_a)` plus tiny noise at init.
 
-The −0.005 nats / 0.4% perplexity advantage at one seed is sub-noise; **the
-takeaway is that the corrected init removes the ~30% optimization penalty
-of random Tucker init**, leaving Tucker's end-to-end loss at 100M tokens
-indistinguishable from SwiGLU at this scale. The loss curves over time are
-in Appendix A2 (`fig_lm_loss_curves`) for completeness; whether the
-representational advantage ever materializes end-to-end at frontier scale is
-open.
+The +0.008 nats Δ at n=3 seeds is sub-noise (within 1σ of SwiGLU's 0.011
+std). **The takeaway is that the variance-preserving init removes the ~30%
+optimization penalty of random Tucker init and brings the architectures to
+parity end-to-end; the diagonal-only restriction (last row) actually
+*underperforms* default-init full-Tucker, ruling out a "diagonal is enough"
+reading.** Loss curves over time are in Appendix A2 (`fig_lm_loss_curves`)
+for completeness; whether the representational advantage ever materializes
+end-to-end at frontier scale is open.
 
 ---
 
