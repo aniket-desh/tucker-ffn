@@ -22,11 +22,12 @@ F_T = NL * tucker_ffn_flops(D, R_TK, S_TK)
 
 
 def measure(arch, **kw):
+    """fp32 forward throughput (autocast bf16 trips up the rope cache dtype
+    mismatch in lib/lm.py — see SDPA dtype check). fp32 is fine for a relative
+    SwiGLU-vs-Tucker FLOPs/throughput comparison."""
     model = make_lm(arch, d=D, n_heads=NH, n_layers=NL, vocab_size=V,
                     max_seq_len=SL, **kw).to(dev).eval()
-    if dev == "cuda":
-        model = model.to(torch.bfloat16)
-    B = 8
+    B = 4
     x = torch.randint(0, V, (B, SL), device=dev)
     with torch.no_grad():
         for _ in range(3):

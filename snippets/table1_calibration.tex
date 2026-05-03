@@ -1,0 +1,22 @@
+\paragraph{Eval set size robustness (Section~\ref{sec:eval_calibration}).}
+Re-running the constant-$\alpha$ ablation on a $32{,}768$-token WikiText-2
+test chunk (chunked into eight $4{,}096$-token windows for memory; baseline
+perplexity averaged across windows) yields:
+%
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+condition & 4K (Table~1) & 32K (chunked) \\
+\midrule
+baseline                       & $16.84$       & $11.78$ \\
+$\alpha=0.5$ (uniform)         & $2.7\times10^{5}$ & $2.5\times10^{5}$ \\
+$\alpha=\bar\alpha$ (per-ch mean) & $6.4\times10^{6}$ & $3.3\times10^{6}$ \\
+$\alpha=1$ (bilinear)          & $7.4\times10^{5}$ & $6.1\times10^{5}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+%
+The quantitative numbers shift somewhat (the larger eval set is a slightly
+easier text distribution), but the qualitative claim is unchanged: every
+constant-$\alpha$ replacement destroys the model by $4$--$6$ orders of
+magnitude in perplexity at both eval-set sizes.

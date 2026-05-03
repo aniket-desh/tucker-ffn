@@ -23,7 +23,8 @@ from lib import (PALETTE, ablated_single_layer, add_common_args,  # noqa: E402
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__,
+                                      conflict_handler="resolve")
     add_common_args(parser)
     parser.add_argument("--results_dir", type=str,
                         default="results/layerwise_alpha")

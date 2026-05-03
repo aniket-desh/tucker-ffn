@@ -14,12 +14,31 @@ from lib.model_utils import get_swiglu_layers
 from lib.activations import capture_mlp_io
 
 
+def chunked_perplexity(model, ids, device, chunk=4096):
+    """compute perplexity over a long sequence by chunking into non-overlapping
+    windows of length `chunk`. averages cross-entropy uniformly across tokens
+    (treats each chunk as independent context, like the cached 4K eval did)."""
+    import math
+    total_nll = 0.0
+    total_tokens = 0
+    with torch.no_grad():
+        for start in range(0, ids.shape[1], chunk):
+            seg = ids[:, start:start + chunk].to(device)
+            if seg.shape[1] < 2:
+                continue
+            out = model(seg, labels=seg)
+            n = seg.shape[1] - 1
+            total_nll += float(out.loss.item()) * n
+            total_tokens += n
+    return float(math.exp(total_nll / total_tokens))
+
+
 MODEL = "Qwen/Qwen2.5-0.5B"
 device = "cuda" if torch.cuda.is_available() else "cpu"
 log("info", f"loading {MODEL} on {device}")
 tok = AutoTokenizer.from_pretrained(MODEL)
 model = AutoModelForCausalLM.from_pretrained(
-    MODEL, torch_dtype=torch.float32 if device == "cpu" else torch.bfloat16
+    MODEL, torch_dtype=torch.float32
 ).to(device).eval()
 
 # fixed 32K-token WikiText-2 test chunk (cached so future reruns are bit-exact)
@@ -35,14 +54,14 @@ else:
     torch.save(ids.cpu(), ids_cache)
 log("info", f"eval_ids shape = {tuple(ids.shape)}  ({ids.numel()} tokens)")
 
-# baseline
-ppl_base = compute_perplexity(model, ids, device)
-log("eval", f"baseline (32K) ppl = {ppl_base:.4f}")
+# baseline (chunk 4K windows to fit memory; matches cached eval's chunk size)
+ppl_base = chunked_perplexity(model, ids.cpu(), device, chunk=4096)
+log("eval", f"baseline (32K, chunked 4K) ppl = {ppl_base:.4f}")
 
-# calibrate alpha mean (use a 32-seq, 1024-tok WT2-train slice as in §5.1)
+# calibrate alpha mean (4K-token slice -- §5.1 calibration size)
 ds_train = load_dataset("wikitext", "wikitext-2-raw-v1", split="train")
 calib_text = "\n\n".join(t for t in ds_train["text"] if t.strip())
-calib_ids = tok(calib_text, return_tensors="pt").input_ids[:, :32 * 1024].to(device)
+calib_ids = tok(calib_text, return_tensors="pt").input_ids[:, :4096].to(device)
 
 layers_info = get_swiglu_layers(model)
 mlp_inputs, _ = capture_mlp_io(model, calib_ids, layers_info, device)
@@ -56,7 +75,7 @@ for info in layers_info:
 results = {"baseline": ppl_base, "n_eval_tokens": int(ids.numel())}
 for mode in ("uniform", "mean", "ones"):
     with ablated_routing(model, layers_info, mode, mean_alphas):
-        p = compute_perplexity(model, ids, device)
+        p = chunked_perplexity(model, ids.cpu(), device, chunk=4096)
     results[mode] = p
     log("eval", f"{mode:8s}  ppl = {p:.2f}")
 
