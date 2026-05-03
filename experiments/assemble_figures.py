@@ -517,8 +517,18 @@ def write_summary(results_root, fig_dir):
         lines.append(f"- `{name}.png` [{status}], stub `{name}.tex`")
     lines.append("")
 
-    out.write_text("\n".join(lines))
-    log("done", f"wrote SUMMARY.md -> {out}")
+    # if SUMMARY.md was hand-curated to embed figures inline (look for the
+    # paper-flow signature), don't clobber it -- write the auto-generated
+    # numbers to SUMMARY_auto.md instead so a human can merge if needed.
+    auto_marker = "## §3 Routed-CP framework"
+    if out.exists() and auto_marker in out.read_text():
+        out_auto = out.with_name("SUMMARY_auto.md")
+        out_auto.write_text("\n".join(lines))
+        log("info", f"SUMMARY.md is hand-curated (paper-flow); wrote auto "
+            f"version to {out_auto}")
+    else:
+        out.write_text("\n".join(lines))
+        log("done", f"wrote SUMMARY.md -> {out}")
 
 
 def main():
