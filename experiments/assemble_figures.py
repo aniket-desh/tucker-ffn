@@ -243,24 +243,36 @@ def write_summary(results_root, fig_dir):
                 lines.append(f"  - {st}: {bests}")
     add_section("Synthetic fitting limit (exp10)", syn, _syn)
 
-    # exp11 lm losses
-    lm_dir = pathlib.Path(results_root) / "exp11"
-    if lm_dir.exists():
-        lines.append("## LM training (exp11)")
-        for d in sorted(lm_dir.iterdir()):
-            cfg = d / "config.json"
-            ll = d / "loss_log.json"
-            if cfg.exists() and ll.exists():
-                with open(cfg) as f:
-                    c = json.load(f)
-                with open(ll) as f:
-                    log_ = json.load(f)
-                last = log_[-1]
-                lines.append(f"- `{d.name}`: arch={c['arch']} seed={c['seed']} "
-                             f"params={c['n_params_total']/1e6:.1f}M | "
-                             f"final val_loss={last['val_loss']:.3f} "
-                             f"(ppl={np.exp(last['val_loss']):.1f}) "
-                             f"after {last['tokens']/1e6:.1f}M tokens")
+    # exp11 lm losses (default-init runs and any hill-climb dirs side-by-side)
+    lm_root_candidates = sorted(pathlib.Path(results_root).glob("exp11*"))
+    if lm_root_candidates:
+        lines.append("## LM training (exp11 + hill-climb variants)")
+        for lm_dir in lm_root_candidates:
+            if not lm_dir.is_dir() or lm_dir.name.endswith("_smoke"):
+                continue
+            for d in sorted(lm_dir.iterdir()):
+                if not d.is_dir():
+                    continue
+                cfg = d / "config.json"
+                ll = d / "loss_log.json"
+                if cfg.exists() and ll.exists():
+                    with open(cfg) as f:
+                        c = json.load(f)
+                    with open(ll) as f:
+                        log_ = json.load(f)
+                    if not log_:
+                        continue
+                    last = log_[-1]
+                    diag_init = c.get("tucker_diagonal_bias_init", False) \
+                        if "tucker_diagonal_bias_init" in c else "?"
+                    tag = f"{lm_dir.name}/{d.name}"
+                    lines.append(
+                        f"- `{tag}`: arch={c['arch']} seed={c['seed']} "
+                        f"params={c['n_params_total']/1e6:.1f}M | "
+                        f"final val_loss={last['val_loss']:.3f} "
+                        f"(ppl={np.exp(last['val_loss']):.1f}) "
+                        f"after {last['tokens']/1e6:.1f}M tokens"
+                    )
         lines.append("")
 
     # exp12 stable ranks

@@ -57,24 +57,37 @@ from lib import (
 
 
 def plot_pairing_permutation(results, results_dir):
-    """plot per-layer perplexity for joint vs u_only with baseline + optional noop."""
+    """plot per-layer perplexity for all permutation conditions, with baseline
+    + optional noop overlay. supports both the legacy (joint, u_only) layout
+    and the symmetric (joint, u_only, g_only, w_only) layout."""
     ppl_baseline = results["baseline"]
-    n_layers = len(results["joint"]["mean"])
+    conds = results.get("conditions", ["joint", "u_only"])
+    n_layers = len(results[conds[0]]["mean"])
     layers_x = np.arange(n_layers)
 
     fig, ax = plt.subplots(figsize=(11, 4))
 
     floor = ppl_baseline * 0.7
-    for cond, color, marker, label in [
-        ("joint",  PALETTE["ablation"],  "o", r"joint $\pi_G = \pi_U$ (breaks W-G coupling)"),
-        ("u_only", PALETTE["secondary"], "s", r"$\pi_U$ only (breaks U pairing)"),
-    ]:
+    style = {
+        "joint":  (PALETTE["ablation"],  "o",
+                   r"joint $\pi_G = \pi_U$ (breaks W-G)"),
+        "u_only": (PALETTE["secondary"], "s",
+                   r"$\pi_U$ only (breaks U pairings)"),
+        "g_only": (PALETTE["accent"],    "^",
+                   r"$\pi_G$ only (breaks G pairings)"),
+        "w_only": (PALETTE["primary"],   "D",
+                   r"$\pi_W$ only (breaks W pairings)"),
+    }
+    for cond in conds:
+        if cond not in style:
+            continue
+        color, marker, label = style[cond]
         mean = np.array(results[cond]["mean"])
         std = np.array(results[cond]["std"])
         ax.plot(layers_x, mean, marker=marker, color=color, lw=1.5, ms=4,
                 label=label)
         ax.fill_between(layers_x, np.maximum(mean - std, floor), mean + std,
-                        color=color, alpha=0.15)
+                        color=color, alpha=0.12)
 
     # optional no-op control overlay
     noop_path = os.path.join(results_dir, "noop_control.json")
@@ -112,50 +125,74 @@ def run_pairing_permutation(model, layers_info, eval_ids, device, results_dir,
     ppl_baseline = compute_perplexity(model, eval_ids, device)
     log("result", f"baseline | perplexity={ppl_baseline:.2f}")
 
-    conds = ("joint", "u_only")
+    # four conditions:
+    #   joint   permute G and U by same π — breaks W-G coupling, keeps G-U
+    #   u_only  permute U alone           — keeps W-G, breaks G-U and W-U
+    #   g_only  permute G alone           — breaks W-G and G-U, keeps W-U
+    #   w_only  permute W alone           — breaks W-G and W-U, keeps G-U
+    # the no-op (g, u, w) joint permutation is exp09b and is exactly baseline.
+    conds = ("joint", "u_only", "g_only", "w_only")
     raw = {c: np.zeros((n_layers, n_seeds)) for c in conds}
 
     for li in range(n_layers):
         for si in range(n_seeds):
             gen = torch.Generator().manual_seed(base_seed + 1000 * si + li)
-            pi = torch.randperm(m, generator=gen)
+            pi   = torch.randperm(m, generator=gen)
             pi_u = torch.randperm(m, generator=gen)
+            pi_g = torch.randperm(m, generator=gen)
+            pi_w = torch.randperm(m, generator=gen)
 
             # joint: same π applied to gate rows and down cols
             with permuted_layer(layers_info, li, perm_g=pi, perm_u=pi):
                 ppl_joint = compute_perplexity(model, eval_ids, device)
             raw["joint"][li, si] = ppl_joint
 
-            # u_only: independent π_u on down cols, gate untouched
+            # u_only: independent π_u on down cols, gate/up untouched
             with permuted_layer(layers_info, li, perm_u=pi_u):
                 ppl_u = compute_perplexity(model, eval_ids, device)
             raw["u_only"][li, si] = ppl_u
 
+            # g_only: independent π_g on gate rows, up/down untouched
+            with permuted_layer(layers_info, li, perm_g=pi_g):
+                ppl_g = compute_perplexity(model, eval_ids, device)
+            raw["g_only"][li, si] = ppl_g
+
+            # w_only: independent π_w on up rows, gate/down untouched
+            with permuted_layer(layers_info, li, perm_w=pi_w):
+                ppl_w = compute_perplexity(model, eval_ids, device)
+            raw["w_only"][li, si] = ppl_w
+
             log("eval", f"layer {li:02d}/{n_layers-1:02d} | seed {si} | "
-                f"joint={ppl_joint:.2e} | u_only={ppl_u:.2e}")
+                f"joint={ppl_joint:.2e} | u_only={ppl_u:.2e} | "
+                f"g_only={ppl_g:.2e} | w_only={ppl_w:.2e}")
 
         means = {c: raw[c][li].mean() for c in conds}
-        log("result", f"layer {li:02d} | joint_mean={means['joint']:.2e} | "
-            f"u_only_mean={means['u_only']:.2e} | "
-            f"joint/u_only={means['joint']/means['u_only']:.2f}")
+        log("result",
+            f"layer {li:02d} | joint={means['joint']:.2e} | "
+            f"u_only={means['u_only']:.2e} | "
+            f"g_only={means['g_only']:.2e} | "
+            f"w_only={means['w_only']:.2e}")
 
     results = {
         "baseline": ppl_baseline,
         "n_seeds": n_seeds,
         "n_layers": n_layers,
-        "joint": {
-            "mean": raw["joint"].mean(axis=1).tolist(),
-            "std":  raw["joint"].std(axis=1).tolist(),
-            "raw":  raw["joint"].tolist(),
-        },
-        "u_only": {
-            "mean": raw["u_only"].mean(axis=1).tolist(),
-            "std":  raw["u_only"].std(axis=1).tolist(),
-            "raw":  raw["u_only"].tolist(),
-        },
+        "conditions": list(conds),
     }
+    for c in conds:
+        results[c] = {
+            "mean": raw[c].mean(axis=1).tolist(),
+            "std":  raw[c].std(axis=1).tolist(),
+            "raw":  raw[c].tolist(),
+        }
 
-    # summary statistics: joint/u_only ratio per layer + aggregate
+    # per-condition summary stats
+    for c in conds:
+        m = np.array(results[c]["mean"])
+        log("summary", f"{c:8s} | mean={m.mean():.2e} | max={m.max():.2e} "
+            f"(layer {int(m.argmax())}) | min={m.min():.2e} "
+            f"(layer {int(m.argmin())})")
+    # legacy joint/u_only ratio (kept for backward-compatible SUMMARY parsing)
     joint_means = np.array(results["joint"]["mean"])
     u_means = np.array(results["u_only"]["mean"])
     ratio = joint_means / np.maximum(u_means, 1e-30)
@@ -163,8 +200,6 @@ def run_pairing_permutation(model, layers_info, eval_ids, device, results_dir,
     results["geomean_ratio"] = float(np.exp(np.log(ratio).mean()))
     log("summary", f"geomean(joint/u_only) across layers = "
         f"{results['geomean_ratio']:.2e}")
-    log("summary", f"max  joint perplexity = {joint_means.max():.2e} | "
-        f"max  u_only perplexity = {u_means.max():.2e}")
 
     with open(os.path.join(results_dir, "pairing_permutation.json"), "w") as f:
         json.dump(results, f, indent=2)

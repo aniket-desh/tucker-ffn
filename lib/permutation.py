@@ -15,24 +15,28 @@ from contextlib import contextmanager
 
 
 @contextmanager
-def permuted_layer(layers_info, layer_idx, perm_g=None, perm_u=None):
-    """temporarily permute gate_proj rows and/or down_proj cols of one layer.
+def permuted_layer(layers_info, layer_idx, perm_g=None, perm_w=None,
+                    perm_u=None):
+    """temporarily permute gate_proj rows, up_proj rows, and/or down_proj
+    cols of one layer.
 
     args:
         layers_info: list from get_swiglu_layers
         layer_idx:   index into layers_info (not the layer_idx field, but the
                      position in the list — they match for standard models)
         perm_g:      long tensor of size m, permutation of gate_proj rows
+        perm_w:      long tensor of size m, permutation of up_proj rows
         perm_u:      long tensor of size m, permutation of down_proj columns
 
     bias handling:
         gate_proj.bias (if present) is on the m-dim output, so it permutes
-        with the rows of gate_proj.weight.
+        with the rows of gate_proj.weight; same for up_proj.bias.
         down_proj.bias is on the d-dim output, so column permutation of
         down_proj.weight does not touch it.
     """
     info = layers_info[layer_idx]
     gp = info["gate_proj"]
+    up = info["up_proj"]
     dp = info["down_proj"]
 
     saved = {}
@@ -44,6 +48,14 @@ def permuted_layer(layers_info, layer_idx, perm_g=None, perm_u=None):
         if gp.bias is not None:
             saved["gate_b"] = gp.bias.data.clone()
             gp.bias.data = gp.bias.data[perm_g].contiguous()
+
+    if perm_w is not None:
+        perm_w = perm_w.to(up.weight.device)
+        saved["up_w"] = up.weight.data.clone()
+        up.weight.data = up.weight.data[perm_w, :].contiguous()
+        if up.bias is not None:
+            saved["up_b"] = up.bias.data.clone()
+            up.bias.data = up.bias.data[perm_w].contiguous()
 
     if perm_u is not None:
         perm_u = perm_u.to(dp.weight.device)
@@ -57,5 +69,9 @@ def permuted_layer(layers_info, layer_idx, perm_g=None, perm_u=None):
             gp.weight.data = saved["gate_w"]
         if "gate_b" in saved:
             gp.bias.data = saved["gate_b"]
+        if "up_w" in saved:
+            up.weight.data = saved["up_w"]
+        if "up_b" in saved:
+            up.bias.data = saved["up_b"]
         if "down_w" in saved:
             dp.weight.data = saved["down_w"]

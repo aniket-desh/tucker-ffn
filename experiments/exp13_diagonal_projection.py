@@ -133,16 +133,17 @@ def projected_C(model, lam):
 
 
 @contextmanager
-def truncated_per_gate(model, rho):
+def truncated_per_gate(model, rho, pinv_rtol=1e-4):
     """for each gate j and each layer, replace V_j = R C^(j) by its rank-rho
     SVD truncation, equivalently replacing C^(j) by C^(j)' s.t. R C^(j)' has
     rank <= rho.
 
-    uses pseudo-inverse: V_j_trunc = U_rho diag(s_rho) Vt_rho. update
-    C^(j) <- R^+ V_j_trunc. R is (d, s) and C^(j) is (s, r); using R^+ as
-    (s, d) preserves the rank-rho range under R since V_j_trunc is in
-    column-space of R only if V_j was. for stability we do least-squares
-    update via lstsq.
+    uses an explicit-tolerance pseudo-inverse rather than lstsq's default to
+    keep the truncation curve honest when R is poorly conditioned (which can
+    happen in trained models when R columns drift toward dependence). at
+    rho >= min(d, r) the update should reproduce the trained C exactly up to
+    pinv numerical error; we assert the baseline is preserved at rho = full
+    upon entry of the rho sweep (see _verify_truncation_baseline).
     """
     saved = {}
     for li, blk in enumerate(model.blocks):
@@ -153,8 +154,8 @@ def truncated_per_gate(model, rho):
             continue
         C = ffn.C.data                # (s, r, r)
         R = ffn.R.data.float()        # (d, s)
+        R_pinv = torch.linalg.pinv(R, rtol=pinv_rtol)  # (s, d)
         s_dim, r_dim, r2_dim = C.shape
-        # pre-factor R: solve R x = b for x via lstsq
         saved[li] = C.clone()
         for j in range(r2_dim):
             Cj = C[:, :, j].float()           # (s, r)
@@ -163,7 +164,7 @@ def truncated_per_gate(model, rho):
             rho_eff = min(rho, S.numel())
             Vj_trunc = U[:, :rho_eff] @ torch.diag(S[:rho_eff]) @ Vt[:rho_eff, :]
             # solve R Cj' = Vj_trunc  =>  Cj' = R^+ Vj_trunc
-            Cj_new = torch.linalg.lstsq(R, Vj_trunc).solution  # (s, r)
+            Cj_new = R_pinv @ Vj_trunc   # (s, r)
             C[:, :, j] = Cj_new.to(C.dtype)
         ffn.C.data = C
     try:
@@ -171,6 +172,18 @@ def truncated_per_gate(model, rho):
     finally:
         for li, C0 in saved.items():
             model.blocks[li].ffn.C.data = C0
+
+
+def report_R_conditioning(model):
+    """report cond(R) per layer; warn if any layer is poorly conditioned."""
+    for li, blk in enumerate(model.blocks):
+        ffn = blk.ffn
+        if not hasattr(ffn, "C") or ffn.C is None or ffn.diagonal_only:
+            continue
+        R = ffn.R.data.float()
+        c = float(torch.linalg.cond(R))
+        tag = "warn" if c > 1e6 else "info"
+        log(tag, f"layer {li:02d} | cond(R)={c:.2e}")
 
 
 def run_diagonal_projection(model, val_inp, val_tgt, batch_size, device,
@@ -186,13 +199,31 @@ def run_diagonal_projection(model, val_inp, val_tgt, batch_size, device,
 
 
 def run_rank_truncation(model, val_inp, val_tgt, batch_size, device,
-                         rho_values):
+                         rho_values, baseline_ppl=None, baseline_rtol=0.01):
+    """sweep per-gate svd truncation rank rho, evaluate val ppl at each.
+
+    sanity check: at rho >= min(d, r) the pinv-roundtrip should reproduce
+    the trained C exactly up to numerical noise, so the curve at the largest
+    rho should match baseline. if not, R is too ill-conditioned for the
+    explicit-tolerance pinv to be meaningful and the curve is unreliable.
+    """
     out = []
     for rho in rho_values:
         with truncated_per_gate(model, rho):
             ppl = eval_perplexity(model, val_inp, val_tgt, batch_size, device)
         log("eval", f"rho={rho:3d} | perplexity={ppl:.3f}")
         out.append({"rho": rho, "perplexity": ppl})
+    if baseline_ppl is not None and out:
+        ppl_max_rho = out[-1]["perplexity"]
+        rel_err = abs(ppl_max_rho - baseline_ppl) / max(baseline_ppl, 1e-9)
+        if rel_err > baseline_rtol:
+            log("warn", f"rho={out[-1]['rho']} ppl={ppl_max_rho:.3f} differs "
+                f"from baseline ppl={baseline_ppl:.3f} by {rel_err*100:.2f}% "
+                f"(tol {baseline_rtol*100:.1f}%) — pinv may be losing precision")
+        else:
+            log("info", f"baseline preservation check passed | "
+                f"rho={out[-1]['rho']} ppl={ppl_max_rho:.3f} | "
+                f"baseline={baseline_ppl:.3f} | rel_err={rel_err*100:.3f}%")
     return out
 
 
@@ -321,6 +352,10 @@ def main():
                                 args.device)
         log("result", f"{tag} | trained perplexity = {ppl0:.3f}")
 
+        # report R conditioning before truncation (numerical sanity)
+        log("info", "checking R conditioning (large cond -> pinv noise risk)")
+        report_R_conditioning(model)
+
         # (a) lambda sweep
         log("info", "diagonal-projection lambda sweep")
         diag_results = run_diagonal_projection(
@@ -337,6 +372,7 @@ def main():
         log("info", f"rho-truncation sweep: {rho_grid}")
         rank_results = run_rank_truncation(
             model, val_inp, val_tgt, args.batch_size, args.device, rho_grid,
+            baseline_ppl=ppl0,
         )
 
         results_by_ckpt[tag] = {
