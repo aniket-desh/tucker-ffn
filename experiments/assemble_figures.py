@@ -212,22 +212,32 @@ def write_summary(results_root, fig_dir):
         lines.append(f"- alpha=1 (bilinear): {r['ones']:.2f}")
     add_section("Routing ablation (Qwen2.5-0.5B perplexity)", abl, _abl)
 
-    # exp09 pairing
+    # exp09 pairing (now supports the 4-condition layout: joint, u_only,
+    # g_only, w_only; falls back gracefully on the legacy 2-condition data)
     pp = pathlib.Path(results_root) / "qwen25_05b" / "pairing_permutation.json"
     def _pp():
         with open(pp) as f:
             r = json.load(f)
         lines.append(f"- baseline perplexity: {r['baseline']:.2f}")
         lines.append(f"- n_seeds: {r['n_seeds']}, n_layers: {r['n_layers']}")
-        lines.append(f"- geomean(joint/u_only) ratio: "
-                     f"{r.get('geomean_ratio', 'N/A')}")
-        joint = np.array(r["joint"]["mean"])
-        u = np.array(r["u_only"]["mean"])
-        lines.append(f"- max joint mean perplexity: {joint.max():.2e} "
-                     f"(layer {int(joint.argmax())})")
-        lines.append(f"- max u_only mean perplexity: {u.max():.2e} "
-                     f"(layer {int(u.argmax())})")
-    add_section("Same-index pairing permutation (exp09)", pp, _pp)
+        for c in r.get("conditions", ["joint", "u_only"]):
+            if c not in r:
+                continue
+            m = np.array(r[c]["mean"])
+            lines.append(f"- {c:8s}: mean={m.mean():.2e}, "
+                         f"max={m.max():.2e} (layer {int(m.argmax())}), "
+                         f"min={m.min():.2e} (layer {int(m.argmin())})")
+        if "geomean_ratio" in r:
+            lines.append(f"- geomean(joint/u_only) ratio: "
+                         f"{r['geomean_ratio']}")
+        # noop control overlay if present
+        noop = pathlib.Path(results_root) / "qwen25_05b" / "noop_control.json"
+        if noop.exists():
+            with open(noop) as f:
+                no = json.load(f)
+            lines.append(f"- no-op (g, u, w joint perm): "
+                         f"max_dev_from_baseline={max(no['noop_per_layer_max_dev']):.2e}")
+    add_section("Same-index pairing permutation (exp09 + exp09b)", pp, _pp)
 
     # exp10 synthetic
     syn = pathlib.Path(results_root) / "exp10" / "synthetic_fitting.npz"
