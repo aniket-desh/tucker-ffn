@@ -10,3 +10,8 @@ slurm/_*.sh
 # slurm/fetch_results.sh — they should not be committed
 results/
 logs/
+
+# runpod workflow — uv-managed venv + per-pod secrets
+.venv/
+.env
+*.egg-info/

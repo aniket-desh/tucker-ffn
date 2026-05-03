@@ -1,0 +1,21 @@
+[project]
+name = "tucker-ffn"
+version = "0.1.0"
+description = "empirical validation of routed-cp decomposition of swiglu ffns"
+requires-python = ">=3.10"
+# torch is unpinned because pypi linux wheels ship cuda-bundled binaries
+# (works on runpod's a40/a10/3090 out of the box). datasets is left
+# unpinned too — runpod does not have the scinet pyarrow shim that
+# forced the <3 cap on trillium.
+dependencies = [
+    "torch",
+    "transformers",
+    "datasets",
+    "numpy",
+    "matplotlib",
+]
+
+[tool.uv]
+# disable build-isolation for torch — uv has special handling for
+# pre-built wheels which is what we want here.
+package = false
