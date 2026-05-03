@@ -199,28 +199,52 @@ def fig_robustness_panel(fig_dir, results_root, model_tags):
     abl_b = dir_b / "ablation_results.json"
     pp_a = dir_a / "pairing_permutation.json"
     pp_b = dir_b / "pairing_permutation.json"
-    needed = [rs_a, rs_b, abl_a, abl_b, pp_a, pp_b]
-    missing = [str(p) for p in needed if not p.exists()]
+    # exp02 + exp04 are required; exp09 is optional (slow on big models).
+    required = [rs_a, rs_b, abl_a, abl_b]
+    missing = [str(p) for p in required if not p.exists()]
     if missing:
         log("error", f"fig_robustness_panel missing inputs: {missing}")
         return
+    have_pp = pp_a.exists() and pp_b.exists()
 
     color_a = PALETTE["primary"]      # qwen2.5-0.5b — steel blue
     color_b = PALETTE["secondary"]    # second family — dull orange
 
-    fig, axes = plt.subplots(1, 3, figsize=(13.5, 3.8))
+    # prefer the actual model name from robustness_summary.json (handles the
+    # fallback case where the requested model was gated and we landed on
+    # something else, so the dir tag is misleading)
+    def _label_for(tag, dir_):
+        rs = dir_ / "robustness_summary.json"
+        if rs.exists():
+            try:
+                with open(rs) as f:
+                    return json.load(f)["model"]
+            except Exception:
+                pass
+        return tag
+    label_a = _label_for(tag_a, dir_a)
+    label_b = _label_for(tag_b, dir_b)
+    # qwen2.5-0.5b results don't have a robustness_summary.json (it's the
+    # baseline), so hard-code its label to the canonical model name.
+    if label_a == tag_a:
+        label_a = "Qwen2.5-0.5B"
+
+    n_panels = 3 if have_pp else 2
+    fig, axes = plt.subplots(1, n_panels, figsize=(4.5 * n_panels, 3.8))
+    if n_panels == 1:
+        axes = [axes]
 
     # ── panel (a): per-layer mean routing variance ─────────────────────
     ax = axes[0]
-    for tag, path, color, marker in [
-        (tag_a, rs_a, color_a, "o"),
-        (tag_b, rs_b, color_b, "s"),
+    for label, path, color, marker in [
+        (label_a, rs_a, color_a, "o"),
+        (label_b, rs_b, color_b, "s"),
     ]:
         d = np.load(path)
         per_layer_mean = d["variances"].mean(axis=1)
         x = np.arange(len(per_layer_mean))
         ax.plot(x, per_layer_mean, marker=marker, color=color, lw=1.5, ms=4,
-                label=tag)
+                label=label)
     ax.set_xlabel("layer")
     ax.set_ylabel(r"mean $\mathrm{Var}_x[\alpha_j(x)]$")
     ax.legend(framealpha=0.9, edgecolor="0.8")
@@ -234,15 +258,15 @@ def fig_robustness_panel(fig_dir, results_root, model_tags):
                    r"$\alpha{=}1$"]
     width = 0.38
     x = np.arange(len(cond_keys))
-    for tag, path, color, offset in [
-        (tag_a, abl_a, color_a, -width / 2),
-        (tag_b, abl_b, color_b,  width / 2),
+    for label, path, color, offset in [
+        (label_a, abl_a, color_a, -width / 2),
+        (label_b, abl_b, color_b,  width / 2),
     ]:
         with open(path) as f:
             r = json.load(f)
         vals = [float(r[k]) for k in cond_keys]
         ax.bar(x + offset, vals, width=width, color=color, alpha=0.85,
-               edgecolor="0.3", linewidth=0.4, label=tag)
+               edgecolor="0.3", linewidth=0.4, label=label)
     ax.set_yscale("log")
     ax.set_xticks(x)
     ax.set_xticklabels(cond_labels)
@@ -251,29 +275,30 @@ def fig_robustness_panel(fig_dir, results_root, model_tags):
     ax.text(0.02, 0.97, "(b)", transform=ax.transAxes, va="top", ha="left",
             fontsize=11, fontweight="bold")
 
-    # ── panel (c): per-layer joint vs u_only perplexity ────────────────
-    ax = axes[2]
-    for tag, path, color in [
-        (tag_a, pp_a, color_a),
-        (tag_b, pp_b, color_b),
-    ]:
-        with open(path) as f:
-            r = json.load(f)
-        floor = float(r["baseline"]) * 0.7
-        for cond, ls, marker in [("joint", "-", "o"), ("u_only", "--", "s")]:
-            mean = np.array(r[cond]["mean"])
-            std = np.array(r[cond]["std"])
-            xx = np.arange(len(mean))
-            ax.plot(xx, mean, ls=ls, marker=marker, color=color, lw=1.4,
-                    ms=3.5, label=f"{tag} {cond}")
-            ax.fill_between(xx, np.maximum(mean - std, floor), mean + std,
-                            color=color, alpha=0.10)
-    ax.set_yscale("log")
-    ax.set_xlabel("permuted layer")
-    ax.set_ylabel("perplexity")
-    ax.legend(framealpha=0.9, edgecolor="0.8", fontsize=8, ncol=2)
-    ax.text(0.02, 0.97, "(c)", transform=ax.transAxes, va="top", ha="left",
-            fontsize=11, fontweight="bold")
+    # ── panel (c): per-layer joint vs u_only perplexity (optional) ─────
+    if have_pp:
+        ax = axes[2]
+        for label, path, color in [
+            (label_a, pp_a, color_a),
+            (label_b, pp_b, color_b),
+        ]:
+            with open(path) as f:
+                r = json.load(f)
+            floor = float(r["baseline"]) * 0.7
+            for cond, ls, marker in [("joint", "-", "o"), ("u_only", "--", "s")]:
+                mean = np.array(r[cond]["mean"])
+                std = np.array(r[cond]["std"])
+                xx = np.arange(len(mean))
+                ax.plot(xx, mean, ls=ls, marker=marker, color=color, lw=1.4,
+                        ms=3.5, label=f"{label} {cond}")
+                ax.fill_between(xx, np.maximum(mean - std, floor), mean + std,
+                                color=color, alpha=0.10)
+        ax.set_yscale("log")
+        ax.set_xlabel("permuted layer")
+        ax.set_ylabel("perplexity")
+        ax.legend(framealpha=0.9, edgecolor="0.8", fontsize=8, ncol=2)
+        ax.text(0.02, 0.97, "(c)", transform=ax.transAxes, va="top", ha="left",
+                fontsize=11, fontweight="bold")
 
     plt.tight_layout()
     out = os.path.join(fig_dir, "fig_robustness_panel.png")

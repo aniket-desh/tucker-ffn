@@ -53,12 +53,18 @@ from experiments.exp09_pairing_permutation import (  # noqa: E402
 def slugify_model(model_name):
     """meta-llama/Llama-3.2-1B -> llama32_1b (drop org, dots, dashes -> _).
 
-    only the trailing path component matters, lowercased; dots inside the
-    version (3.2) collapse to nothing per the user's example tag.
+    rules (matched to existing tags `qwen25_05b`, `llama32_1b`):
+      - keep only the trailing path component, lowercased
+      - drop dots inside numeric versions: "3.2" -> "32", "2.5" -> "25"
+      - drop a single dash directly between letters and the model version
+        digits ("llama-32" -> "llama32")
+      - any remaining run of non-alphanumerics collapses to a single "_"
     """
     base = model_name.rsplit("/", 1)[-1].lower()
-    # special-case the dotted version: "3.2" -> "32"
+    # collapse dotted versions: "3.2" -> "32", "0.5" -> "05"
     base = re.sub(r"(\d)\.(\d)", r"\1\2", base)
+    # drop the dash between a name and its version digits
+    base = re.sub(r"([a-z])-(\d)", r"\1\2", base)
     base = re.sub(r"[^a-z0-9]+", "_", base).strip("_")
     return base
 
@@ -159,6 +165,11 @@ def main():
     parser.add_argument("--n_seeds", type=int, default=4,
                         help="number of permutation seeds for exp09 "
                              "(default 4; the standalone exp09 default is 8)")
+    parser.add_argument("--skip_exp09", action="store_true",
+                        help="skip the per-layer pairing-permutation panel. "
+                             "exp09 dominates wall-clock on larger models "
+                             "(28 layers x 4 conds x n_seeds). exp02+exp04 "
+                             "alone still defuse the Qwen-specific concern.")
     args = parser.parse_args()
 
     t0_total = time.time()
@@ -208,15 +219,19 @@ def main():
     print()
 
     # ── exp09: same-index pairing permutation ────────────────────────────
-    t0 = time.time()
-    pp_results = run_pairing_permutation(
-        model, layers_info, eval_ids, device, results_dir,
-        n_seeds=args.n_seeds, base_seed=args.seed,
-    )
-    joint_over_u_only_geomean = float(pp_results["geomean_ratio"])
-    log("robust", f"exp09 joint_over_u_only_geomean={joint_over_u_only_geomean:.2e} "
-        f"| time={time.time() - t0:.1f}s")
-    print()
+    if args.skip_exp09:
+        log("info", "skipping exp09 (--skip_exp09 set)")
+        joint_over_u_only_geomean = None
+    else:
+        t0 = time.time()
+        pp_results = run_pairing_permutation(
+            model, layers_info, eval_ids, device, results_dir,
+            n_seeds=args.n_seeds, base_seed=args.seed,
+        )
+        joint_over_u_only_geomean = float(pp_results["geomean_ratio"])
+        log("robust", f"exp09 joint_over_u_only_geomean={joint_over_u_only_geomean:.2e} "
+            f"| time={time.time() - t0:.1f}s")
+        print()
 
     # ── compose summary side-by-side with Qwen2.5-0.5B ───────────────────
     qwen_baseline = _load_qwen_baseline(args.qwen_dir)
@@ -235,15 +250,17 @@ def main():
         json.dump(summary, f, indent=2)
     log("done", f"saved robustness_summary.json -> {results_dir}/")
 
+    def _fmt(v, spec):
+        return format(v, spec) if v is not None else "n/a"
     log("summary",
-        f"this_model: var={summary['this_model']['mean_routing_variance']:.3e} | "
-        f"ones_ratio={summary['this_model']['ablation_ones_ratio']:.2e} | "
-        f"joint/u_only={summary['this_model']['joint_over_u_only_geomean']:.2e}")
-    if all(v is not None for v in qwen_baseline.values()):
+        f"this_model: var={_fmt(summary['this_model']['mean_routing_variance'], '.3e')} | "
+        f"ones_ratio={_fmt(summary['this_model']['ablation_ones_ratio'], '.2e')} | "
+        f"joint/u_only={_fmt(summary['this_model']['joint_over_u_only_geomean'], '.2e')}")
+    if any(v is not None for v in qwen_baseline.values()):
         log("summary",
-            f"qwen25_05b: var={qwen_baseline['mean_routing_variance']:.3e} | "
-            f"ones_ratio={qwen_baseline['ablation_ones_ratio']:.2e} | "
-            f"joint/u_only={qwen_baseline['joint_over_u_only_geomean']:.2e}")
+            f"qwen25_05b: var={_fmt(qwen_baseline['mean_routing_variance'], '.3e')} | "
+            f"ones_ratio={_fmt(qwen_baseline['ablation_ones_ratio'], '.2e')} | "
+            f"joint/u_only={_fmt(qwen_baseline['joint_over_u_only_geomean'], '.2e')}")
 
     log("done", f"experiment 17 complete | "
         f"total_time={(time.time() - t0_total) / 60:.1f}min")
