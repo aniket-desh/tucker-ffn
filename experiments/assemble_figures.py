@@ -62,35 +62,39 @@ def fig_synthetic_fitting(fig_dir, src_dir):
 
 
 def fig_diagonal_projection(fig_dir, src_dir):
-    bar = os.path.join(src_dir, "diagonal_projection_bar.png")
+    """2-panel: dose (lambda) + rank truncation (rho).
+
+    drops the trained-vs-projected bar panel — the headline 518x number
+    lives in the caption / section prose, not as a single-bar figure.
+    """
     dose = os.path.join(src_dir, "diagonal_projection_dose.png")
     rank = os.path.join(src_dir, "rank_truncation_curve.png")
 
     setup_plot_style()
-    n_panels = sum(os.path.exists(p) for p in [bar, dose, rank])
-    if n_panels == 0:
-        log("error", f"no exp13 outputs in {src_dir}")
+    panels = [p for p in [dose, rank] if os.path.exists(p)]
+    if not panels:
+        log("error", f"no exp13 dose/rank outputs in {src_dir}")
         return
-    fig, axes = plt.subplots(1, n_panels, figsize=(4.0 * n_panels, 3.5))
-    if n_panels == 1:
+    fig, axes = plt.subplots(1, len(panels), figsize=(4.5 * len(panels), 3.5))
+    if len(panels) == 1:
         axes = [axes]
-    panel = 0
-    for p in [bar, dose, rank]:
-        if not os.path.exists(p):
-            continue
+    for ax, p in zip(axes, panels):
         img = plt.imread(p)
-        axes[panel].imshow(img)
-        axes[panel].axis("off")
-        panel += 1
+        ax.imshow(img)
+        ax.axis("off")
     plt.tight_layout()
     out = os.path.join(fig_dir, "fig_diagonal_projection.png")
     plt.savefig(out, dpi=300)
     plt.close()
     write_tex_stub("fig_diagonal_projection", fig_dir,
-        "Diagonal-bottleneck cost on a trained Tucker LM. Left: validation "
-        r"perplexity at $\lambda{=}0$ (trained) vs $\lambda{=}1$ (forced "
-        r"superdiagonal $C$). Center: dose-response over $\lambda$. Right: "
-        r"per-gate SVD rank truncation $\rho$ of $V_j{=}RC^{(j)}$.")
+        "Diagonal-bottleneck cost on a trained Tucker LM. "
+        r"Left: dose-response of validation perplexity over the diagonal "
+        r"interpolation $\lambda$ (full Tucker at $\lambda{=}0$, forced "
+        r"superdiagonal $C$ at $\lambda{=}1$, with $518\times$ perplexity "
+        r"penalty at $\lambda{=}1$). Right: per-gate SVD rank truncation "
+        r"$\rho$ of $V_j{=}RC^{(j)}$, tracing the aligned-SwiGLU width "
+        r"$m{=}\rho\cdot r$ curve from $\rho{=}1$ (rank-1 ceiling) to "
+        r"$\rho{=}r$ (full Tucker).")
     log("done", f"wrote fig_diagonal_projection.png")
 
 
@@ -245,8 +249,8 @@ def fig_robustness_panel(fig_dir, results_root, model_tags):
         x = np.arange(len(per_layer_mean))
         ax.plot(x, per_layer_mean, marker=marker, color=color, lw=1.5, ms=4,
                 label=label)
-    ax.set_xlabel("layer")
-    ax.set_ylabel(r"mean $\mathrm{Var}_x[\alpha_j(x)]$")
+    ax.set_xlabel("Layer")
+    ax.set_ylabel(r"Mean $\mathrm{Var}_x[\alpha_j(x)]$")
     ax.legend(framealpha=0.9, edgecolor="0.8")
     ax.text(0.02, 0.97, "(a)", transform=ax.transAxes, va="top", ha="left",
             fontsize=11, fontweight="bold")
@@ -254,7 +258,7 @@ def fig_robustness_panel(fig_dir, results_root, model_tags):
     # ── panel (b): constant-alpha ablation bars (grouped) ──────────────
     ax = axes[1]
     cond_keys = ["baseline", "uniform", "mean", "ones"]
-    cond_labels = ["baseline", r"$\alpha{=}0.5$", r"$\alpha{=}\bar\alpha$",
+    cond_labels = ["Baseline", r"$\alpha{=}0.5$", r"$\alpha{=}\bar\alpha$",
                    r"$\alpha{=}1$"]
     width = 0.38
     x = np.arange(len(cond_keys))
@@ -270,7 +274,7 @@ def fig_robustness_panel(fig_dir, results_root, model_tags):
     ax.set_yscale("log")
     ax.set_xticks(x)
     ax.set_xticklabels(cond_labels)
-    ax.set_ylabel("perplexity")
+    ax.set_ylabel("Perplexity")
     ax.legend(framealpha=0.9, edgecolor="0.8")
     ax.text(0.02, 0.97, "(b)", transform=ax.transAxes, va="top", ha="left",
             fontsize=11, fontweight="bold")
@@ -294,8 +298,8 @@ def fig_robustness_panel(fig_dir, results_root, model_tags):
                 ax.fill_between(xx, np.maximum(mean - std, floor), mean + std,
                                 color=color, alpha=0.10)
         ax.set_yscale("log")
-        ax.set_xlabel("permuted layer")
-        ax.set_ylabel("perplexity")
+        ax.set_xlabel("Permuted layer")
+        ax.set_ylabel("Perplexity")
         ax.legend(framealpha=0.9, edgecolor="0.8", fontsize=8, ncol=2)
         ax.text(0.02, 0.97, "(c)", transform=ax.transAxes, va="top", ha="left",
                 fontsize=11, fontweight="bold")

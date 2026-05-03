@@ -298,15 +298,15 @@ def plot_results(results_by_ckpt, results_dir):
         diag.append(diag_ppl)
         tags.append(tag)
     ax.bar(xs - width/2, full, width=width, color=PALETTE["primary"],
-            edgecolor="0.3", label=r"trained tucker ($\lambda=0$)")
+            edgecolor="0.3", label=r"Trained Tucker ($\lambda=0$)")
     ax.bar(xs + width/2, diag, width=width, color=PALETTE["ablation"],
-            edgecolor="0.3", label=r"diagonal-projected ($\lambda=1$)")
+            edgecolor="0.3", label=r"Diagonal-projected ($\lambda=1$)")
     for i, (f, dd) in enumerate(zip(full, diag)):
         ax.text(i - width/2, f * 1.02, f"{f:.2f}", ha="center", fontsize=9)
         ax.text(i + width/2, dd * 1.02, f"{dd:.2f}", ha="center", fontsize=9)
     ax.set_xticks(xs)
     ax.set_xticklabels(tags, rotation=15, ha="right")
-    ax.set_ylabel("validation perplexity")
+    ax.set_ylabel("Validation perplexity")
     ax.set_yscale("log")
     ax.legend(framealpha=0.9, edgecolor="0.8")
     plt.tight_layout()
@@ -322,7 +322,7 @@ def plot_results(results_by_ckpt, results_dir):
         ax.plot(lam, ppl, marker="o", color=COLOR_CYCLE[ti % len(COLOR_CYCLE)],
                 lw=1.5, label=tag)
     ax.set_xlabel(r"$\lambda$ (interpolation toward diagonal)")
-    ax.set_ylabel("validation perplexity")
+    ax.set_ylabel("Validation perplexity")
     ax.set_yscale("log")
     ax.legend(framealpha=0.9, edgecolor="0.8")
     plt.tight_layout()
@@ -339,8 +339,8 @@ def plot_results(results_by_ckpt, results_dir):
         ppl = [r["perplexity"] for r in d_["rank_truncation"]]
         ax.plot(rho, ppl, marker="s", color=COLOR_CYCLE[ti % len(COLOR_CYCLE)],
                 lw=1.5, label=tag)
-    ax.set_xlabel(r"per-gate svd truncation rank $\rho$")
-    ax.set_ylabel("validation perplexity")
+    ax.set_xlabel(r"Per-gate SVD truncation rank $\rho$")
+    ax.set_ylabel("Validation perplexity")
     ax.set_yscale("log")
     ax.legend(framealpha=0.9, edgecolor="0.8")
     plt.tight_layout()

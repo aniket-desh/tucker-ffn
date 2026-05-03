@@ -239,11 +239,11 @@ def main():
     tk_means = [np.mean([r["val_mse"] for r in e["results"]["tucker"]]) for e in results]
     tk_stds = [np.std([r["val_mse"] for r in e["results"]["tucker"]]) for e in results]
     ax.errorbar(xs, sw_means, yerr=sw_stds, marker="o", color=PALETTE["primary"],
-                lw=1.5, label="swiglu (student)", capsize=3)
+                lw=1.5, label="SwiGLU (student)", capsize=3)
     ax.errorbar(xs, tk_means, yerr=tk_stds, marker="s", color=PALETTE["ablation"],
-                lw=1.5, label="tucker (student)", capsize=3)
-    ax.set_xlabel("ffn parameter budget")
-    ax.set_ylabel(f"distillation val MSE\n(tucker teacher, r={r_teacher})")
+                lw=1.5, label="Tucker (student)", capsize=3)
+    ax.set_xlabel("FFN parameter budget")
+    ax.set_ylabel(f"Distillation val MSE\n(Tucker teacher, $r{{=}}{r_teacher}$)")
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.legend(framealpha=0.9, edgecolor="0.8")

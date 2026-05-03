@@ -36,7 +36,7 @@ from lib import (
 def plot_ablation(results, results_dir):
     """generate ablation bar chart from results dict."""
     fig, ax = plt.subplots(figsize=(6, 4))
-    names = ["baseline", r"$\alpha=0.5$" + "\n(uniform)",
+    names = ["Baseline", r"$\alpha=0.5$" + "\n(uniform)",
              r"$\alpha=\mathbb{E}[\alpha_j]$" + "\n(per-ch mean)",
              r"$\alpha=1$" + "\n(bilinear)"]
     ppls = [results["baseline"], results["uniform"], results["mean"], results["ones"]]
@@ -45,7 +45,7 @@ def plot_ablation(results, results_dir):
     bars = ax.bar(names, ppls, color=colors, alpha=0.85, width=0.55,
                   edgecolor="0.3", linewidth=0.4)
     ax.set_yscale("log")
-    ax.set_ylabel("perplexity")
+    ax.set_ylabel("Perplexity")
 
     for bar, val in zip(bars, ppls):
         label = f"{val:.1f}" if val < 1000 else f"{val:.1e}"

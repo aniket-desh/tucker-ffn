@@ -120,9 +120,13 @@ def plot_stable_rank(results, results_dir):
         L = s_rank.shape[0]
         r = s_rank.shape[1]
 
-        # histogram, one panel per few layers
-        n_panels = min(4, L)
-        layer_picks = np.linspace(0, L - 1, n_panels, dtype=int)
+        # histogram, two panels: representative early + late layer.
+        # the result is layer-stable (means within ~0.5 across all 8
+        # layers in our setting), so showing all of them is mostly noise;
+        # the 2-panel early/late version conveys "stable across depth"
+        # at half the figure width.
+        n_panels = min(2, L)
+        layer_picks = np.array([0, L - 1])[:n_panels]
         fig, axes = plt.subplots(1, n_panels, figsize=(3.2 * n_panels, 3),
                                   sharey=True)
         if n_panels == 1:
@@ -135,13 +139,13 @@ def plot_stable_rank(results, results_dir):
             # vertical reference line at rank=1: the aligned-swiglu ceiling
             # (a swiglu of width r can express at most rank-1 V_j per gate).
             ax.axvline(1.0, color=PALETTE["ablation"], ls="-", lw=1.0,
-                        label="aligned-swiglu (rank 1)")
+                        label="Aligned-SwiGLU (rank 1)")
             ax.axvline(s_rank[li].mean(), color=PALETTE["neutral"], ls="--",
-                        lw=0.8, label=f"mean = {s_rank[li].mean():.2f}")
-            ax.set_xlabel("stable rank of $V_j$")
-            ax.set_title(f"layer {li}")
+                        lw=0.8, label=f"Mean = {s_rank[li].mean():.2f}")
+            ax.set_xlabel("Stable rank of $V_j$")
+            ax.set_title(f"Layer {li}")
             ax.legend(framealpha=0.9, edgecolor="0.8", fontsize=8)
-        axes[0].set_ylabel("count (gates)")
+        axes[0].set_ylabel("Count (gates)")
         plt.tight_layout()
         out = os.path.join(results_dir, f"stable_rank_histogram_{tag}.png")
         plt.savefig(out)
@@ -153,10 +157,10 @@ def plot_stable_rank(results, results_dir):
         fig, ax = plt.subplots(figsize=(11, 4))
         im = ax.imshow(s_rank[:, sort_idx], aspect="auto", cmap="viridis",
                         interpolation="nearest", vmin=1.0)
-        ax.set_xlabel("gate index $j$ (sorted by mean stable rank)")
-        ax.set_ylabel("layer")
+        ax.set_xlabel("Gate index $j$ (sorted by mean stable rank)")
+        ax.set_ylabel("Layer")
         cbar = plt.colorbar(im, ax=ax, pad=0.02)
-        cbar.set_label("stable rank of $V_j$")
+        cbar.set_label("Stable rank of $V_j$")
         plt.tight_layout()
         out = os.path.join(results_dir, f"stable_rank_heatmap_{tag}.png")
         plt.savefig(out)

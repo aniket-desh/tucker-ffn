@@ -290,9 +290,9 @@ def plot_loss_curves(results_dir, archs, seeds):
     setup_plot_style()
     fig, ax = plt.subplots(figsize=(7, 4))
     style = {
-        "swiglu": (PALETTE["primary"],  "o", "swiglu (matched params)"),
-        "tucker": (PALETTE["ablation"], "s", "tucker (matched params)"),
-        "tucker_diag": (PALETTE["accent"], "^", "tucker (diagonal-only)"),
+        "swiglu": (PALETTE["primary"],  "o", "SwiGLU (matched params)"),
+        "tucker": (PALETTE["ablation"], "s", "Tucker (matched params)"),
+        "tucker_diag": (PALETTE["accent"], "^", "Tucker (diagonal-only)"),
     }
     for arch in archs:
         color, marker, label = style[arch]
@@ -318,8 +318,8 @@ def plot_loss_curves(results_dir, archs, seeds):
         if all_curves.shape[0] > 1:
             ax.fill_between(tokens_axis, mean - std, mean + std,
                              color=color, alpha=0.15)
-    ax.set_xlabel("tokens (M)")
-    ax.set_ylabel("validation loss")
+    ax.set_xlabel("Tokens (M)")
+    ax.set_ylabel("Validation loss")
     ax.legend(framealpha=0.9, edgecolor="0.8")
     plt.tight_layout()
     out = os.path.join(results_dir, "loss_curves.png")

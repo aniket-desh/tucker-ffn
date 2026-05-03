@@ -97,12 +97,12 @@ def plot_pairing_permutation(results, results_dir):
         noop_means = np.array(noop["noop_per_layer_mean"])
         ax.plot(np.arange(len(noop_means)), noop_means,
                 marker="x", ls=":", color=PALETTE["accent"], lw=1.0, ms=4,
-                label=r"no-op: permute $\pi_G=\pi_W=\pi_U$ together")
+                label=r"No-op: permute $\pi_G=\pi_W=\pi_U$ together")
 
     ax.axhline(ppl_baseline, color=PALETTE["primary"], ls="--", lw=0.8,
-               label=f"baseline = {ppl_baseline:.1f}")
-    ax.set_xlabel("permuted layer")
-    ax.set_ylabel("perplexity")
+               label=f"Baseline = {ppl_baseline:.1f}")
+    ax.set_xlabel("Permuted layer")
+    ax.set_ylabel("Perplexity")
     ax.set_yscale("log")
     ax.set_xticks(layers_x)
     ax.set_ylim(bottom=floor)

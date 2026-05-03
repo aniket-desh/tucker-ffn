@@ -110,13 +110,15 @@ This is the most direct empirical verification of Theorem 1.
 
 _source: `results/exp13_hc_v3/results.json` (hill-climbed Tucker LM trained on
 100M FineWeb-Edu tokens, evaluated on a 64-sequence held-out FineWeb-Edu val
-set). λ-sweep interpolates C → diag(C); ρ-sweep replaces V_j = R C^(j) by its
-rank-ρ SVD truncation gate-by-gate. Baseline preservation check at ρ=128
-passes at 0.002% rel_err._
+set). 2-panel: λ-sweep interpolates C → diag(C); ρ-sweep replaces V_j = R C^(j)
+by its rank-ρ SVD truncation gate-by-gate (log-ρ axis). Baseline preservation
+check at ρ=128 passes at 0.002% rel_err. The headline 518× number lives in
+the caption / prose — the dose-response and rank-truncation curves carry the
+load._
 
-- **bar:** trained ppl **111.84** vs fully-diagonal projected **57,975** = **518× cost**.
-- **dose-response:** smooth blow-up with λ — λ=0.50 ppl 172, λ=0.75 ppl 901, λ=0.90 ppl 11,165.
-- **rank-truncation:** ρ=1 ppl 41,546 → ρ=8 ppl 667 → ρ=32 ppl 136 → ρ=128 ppl 111.84. The crisp 1-to-128 descent traces "aligned-SwiGLU width m=ρ·r" perplexity.
+- **headline:** trained ppl **111.84** vs fully-diagonal projected **57,975** = **518× cost** at λ=1.
+- **dose-response (left):** smooth blow-up with λ — λ=0.50 ppl 172, λ=0.75 ppl 901, λ=0.90 ppl 11,165, λ=1.0 ppl 57,975.
+- **rank-truncation (right):** ρ=1 ppl 41,546 → ρ=8 ppl 667 → ρ=32 ppl 136 → ρ=128 ppl 111.84. The crisp 1-to-128 descent traces "aligned-SwiGLU width m=ρ·r" perplexity on a log-ρ axis.
 
 ---
 

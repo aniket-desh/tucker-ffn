@@ -57,11 +57,11 @@ def plot_routing_stats(variances, means, hists, results_dir):
         ax.fill_between(centers, h, alpha=0.25, color=layer_colors[li])
         ax.plot(centers, h, color=layer_colors[li], lw=1.5)
         ax.set_xlabel(r"$\alpha_j(x)$")
-        ax.set_ylabel("count")
+        ax.set_ylabel("Count")
         ax.set_xlim(0, 1)
         mean_a = means[li].mean()
         ax.axvline(mean_a, color=PALETTE["neutral"], ls="--", lw=0.8,
-                   label=f"layer {li}, mean = {mean_a:.2f}")
+                   label=f"Layer {li}, mean = {mean_a:.2f}")
         ax.legend(framealpha=0.9, edgecolor="0.8")
 
     plt.tight_layout()
@@ -76,10 +76,10 @@ def plot_routing_stats(variances, means, hists, results_dir):
     fig, ax = plt.subplots(figsize=(12, 4.5))
     im = ax.imshow(variances[:, sort_idx[:n_show]], aspect="auto",
                    cmap="viridis", interpolation="nearest")
-    ax.set_xlabel(f"channel (sorted by mean variance, top {n_show})")
-    ax.set_ylabel("layer")
+    ax.set_xlabel(f"Channel (sorted by mean variance, top {n_show})")
+    ax.set_ylabel("Layer")
     cbar = plt.colorbar(im, ax=ax, pad=0.02)
-    cbar.set_label("variance")
+    cbar.set_label("Variance")
     plt.tight_layout()
     plt.savefig(os.path.join(results_dir, "routing_variance_heatmap.png"))
     plt.close()
@@ -95,9 +95,9 @@ def plot_routing_stats(variances, means, hists, results_dir):
     ax.fill_between(layers_x, q25, q75, alpha=0.15, color=PALETTE["primary"],
                     label="25th–75th percentile")
     ax.plot(layers_x, mean_var_per_layer, "o-", color=PALETTE["primary"],
-            ms=4, lw=1.5, label="mean")
-    ax.set_xlabel("layer")
-    ax.set_ylabel(r"$\mathrm{Var}_x[\alpha_j(x)]$")
+            ms=4, lw=1.5, label="Mean")
+    ax.set_xlabel("Layer")
+    ax.set_ylabel(r"Mean $\mathrm{Var}_x[\alpha_j(x)]$")
     ax.legend(framealpha=0.9, edgecolor="0.8")
     plt.tight_layout()
     plt.savefig(os.path.join(results_dir, "routing_variance_by_layer.png"))

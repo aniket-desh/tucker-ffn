@@ -250,9 +250,9 @@ def plot_synthetic_fitting(npz_path, results_dir):
         axes = [axes]
 
     style = {
-        "swiglu_unconstrained": (PALETTE["primary"],   "o", "-",  "swiglu (unconstrained)"),
-        "swiglu_aligned":       (PALETTE["ablation"],  "s", "--", r"swiglu (aligned, theorem 1)"),
-        "tucker_control":       (PALETTE["accent"],    "^", ":",  "tucker (control)"),
+        "swiglu_unconstrained": (PALETTE["primary"],   "o", "-",  "SwiGLU (unconstrained)"),
+        "swiglu_aligned":       (PALETTE["ablation"],  "s", "--", r"SwiGLU (aligned, Theorem 1)"),
+        "tucker_control":       (PALETTE["accent"],    "^", ":",  "Tucker (control)"),
     }
 
     for ax, k in zip(axes, k_values):
@@ -267,9 +267,9 @@ def plot_synthetic_fitting(npz_path, results_dir):
                    label=fr"$m = k^2 = {k*k}$")
         ax.set_xscale("log")
         ax.set_yscale("log")
-        ax.set_xlabel(r"swiglu hidden width $m$")
+        ax.set_xlabel(r"SwiGLU hidden width $m$")
         ax.set_title(fr"$k = {k}$")
-    axes[0].set_ylabel("validation MSE")
+    axes[0].set_ylabel("Validation MSE")
     axes[-1].legend(framealpha=0.9, edgecolor="0.8", loc="best", fontsize=8)
 
     plt.tight_layout()
