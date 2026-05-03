@@ -1,6 +1,6 @@
 # Tucker-core FFN
 
-Code accompanying the paper *The Diagonal Bottleneck: A Separation Theorem for SwiGLU and Tucker-Core FFNs*.
+Code accompanying the paper *SwiGLU as a Routed CP Tensor Model*.
 
 The library provides a Tucker-core generalization of SwiGLU and the empirical
 machinery used to compare the two: the routed-CP routing-statistics probes on
