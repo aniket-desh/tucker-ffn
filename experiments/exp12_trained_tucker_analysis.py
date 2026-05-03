@@ -82,7 +82,11 @@ def load_tucker_lm(ckpt_path):
 
 
 def analyze_one(ckpt_path):
-    """compute V_j stable & effective ranks per (layer, j) from one checkpoint."""
+    """compute V_j stable & effective ranks per (layer, j) from one checkpoint.
+
+    vectorized: stack the per-gate V_j tensors into a (r, d, r) batch and call
+    torch.linalg.svdvals once per layer instead of r times.
+    """
     model, cfg = load_tucker_lm(ckpt_path)
     L = len(model.blocks)
     r = cfg["tucker_r"]
@@ -91,15 +95,21 @@ def analyze_one(ckpt_path):
     op_norm = np.zeros((L, r))
     for li, blk in enumerate(model.blocks):
         ffn = blk.ffn  # TuckerFFN
-        R = ffn.R.detach()                # (d, s)
-        C = ffn.core().detach()           # (s, r, r)
-        for j in range(r):
-            Cj = C[:, :, j]               # (s, r)
-            Vj = R @ Cj                   # (d, r)
-            s_rank[li, j] = stable_rank(Vj)
-            e_rank[li, j] = effective_rank(Vj)
-            sv = torch.linalg.svdvals(Vj.float())
-            op_norm[li, j] = float(sv[0])
+        R = ffn.R.detach().float()           # (d, s)
+        C = ffn.core().detach().float()      # (s, r, r)
+        # V[j] = R @ C[:, :, j] -> stack via einsum to (r2, d, r)
+        V = torch.einsum("ds,srj->jdr", R, C)
+        sv = torch.linalg.svdvals(V)         # (r2, k)  k = min(d, r)
+        sv2 = sv ** 2
+        # stable rank = ||V||_F^2 / ||V||_op^2 = sum sv^2 / max sv^2
+        op2 = sv2[:, 0].clamp(min=1e-30)
+        s_rank[li] = (sv2.sum(dim=-1) / op2).cpu().numpy()
+        # effective rank = exp(entropy of normalized sv^2)
+        p = sv2 / sv2.sum(dim=-1, keepdim=True).clamp(min=1e-30)
+        p = p.clamp(min=1e-30)
+        H = -(p * p.log()).sum(dim=-1)
+        e_rank[li] = torch.exp(H).cpu().numpy()
+        op_norm[li] = sv[:, 0].cpu().numpy()
     return s_rank, e_rank, op_norm, cfg
 
 

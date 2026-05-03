@@ -132,8 +132,45 @@ def projected_C(model, lam):
             model.blocks[li].ffn.C.data = C0
 
 
+def _build_truncation_cache(model, pinv_rtol=1e-4):
+    """precompute the per-layer (R_pinv, U, S, Vt) tensors used by every rho
+    truncation call so the rho sweep does a single batched SVD per layer
+    instead of r per-gate SVDs per rho.
+
+    cached entries:
+      R_pinv  (s, d)
+      U       (r, d, k)   batched left singular vectors of V_j over j
+      S       (r, k)
+      Vt      (r, k, r)
+      original C  (s, r, r)  for restoration
+    where k = min(d, r). batched with torch.linalg.svd on stacked V_j.
+    """
+    cache = {}
+    for li, blk in enumerate(model.blocks):
+        ffn = blk.ffn
+        if not hasattr(ffn, "C") or ffn.C is None:
+            continue
+        if ffn.diagonal_only:
+            continue
+        C = ffn.C.data.float()                  # (s, r, r)
+        R = ffn.R.data.float()                  # (d, s)
+        s_dim, r_dim, r2_dim = C.shape
+        # V_j = R @ C[:,:,j]  for each j -> (r2, d, r)
+        # stack: einsum across the j axis directly
+        V = torch.einsum("ds,srj->jdr", R, C)   # (r2, d, r)
+        U, S, Vt = torch.linalg.svd(V, full_matrices=False)  # batched
+        R_pinv = torch.linalg.pinv(R, rtol=pinv_rtol)        # (s, d)
+        cache[li] = {
+            "U": U, "S": S, "Vt": Vt, "R_pinv": R_pinv,
+            "C0": ffn.C.data.clone(),
+            "shape": (s_dim, r_dim, r2_dim),
+            "dtype": ffn.C.data.dtype,
+        }
+    return cache
+
+
 @contextmanager
-def truncated_per_gate(model, rho, pinv_rtol=1e-4):
+def truncated_per_gate(model, rho, cache=None, pinv_rtol=1e-4):
     """for each gate j and each layer, replace V_j = R C^(j) by its rank-rho
     SVD truncation, equivalently replacing C^(j) by C^(j)' s.t. R C^(j)' has
     rank <= rho.
@@ -142,31 +179,40 @@ def truncated_per_gate(model, rho, pinv_rtol=1e-4):
     keep the truncation curve honest when R is poorly conditioned (which can
     happen in trained models when R columns drift toward dependence). at
     rho >= min(d, r) the update should reproduce the trained C exactly up to
-    pinv numerical error; we assert the baseline is preserved at rho = full
-    upon entry of the rho sweep (see _verify_truncation_baseline).
+    pinv numerical error; we sanity-check this in run_rank_truncation.
+
+    optimization: caller may pass a precomputed cache from
+    _build_truncation_cache. without it we build one inline (single-rho usage).
     """
+    own_cache = cache is None
+    if own_cache:
+        cache = _build_truncation_cache(model, pinv_rtol=pinv_rtol)
+
     saved = {}
-    for li, blk in enumerate(model.blocks):
-        ffn = blk.ffn
-        if not hasattr(ffn, "C") or ffn.C is None:
-            continue
-        if ffn.diagonal_only:
-            continue
-        C = ffn.C.data                # (s, r, r)
-        R = ffn.R.data.float()        # (d, s)
-        R_pinv = torch.linalg.pinv(R, rtol=pinv_rtol)  # (s, d)
-        s_dim, r_dim, r2_dim = C.shape
-        saved[li] = C.clone()
-        for j in range(r2_dim):
-            Cj = C[:, :, j].float()           # (s, r)
-            Vj = R @ Cj                       # (d, r)
-            U, S, Vt = torch.linalg.svd(Vj, full_matrices=False)
-            rho_eff = min(rho, S.numel())
-            Vj_trunc = U[:, :rho_eff] @ torch.diag(S[:rho_eff]) @ Vt[:rho_eff, :]
-            # solve R Cj' = Vj_trunc  =>  Cj' = R^+ Vj_trunc
-            Cj_new = R_pinv @ Vj_trunc   # (s, r)
-            C[:, :, j] = Cj_new.to(C.dtype)
-        ffn.C.data = C
+    for li, entry in cache.items():
+        ffn = model.blocks[li].ffn
+        U, S, Vt = entry["U"], entry["S"], entry["Vt"]
+        R_pinv = entry["R_pinv"]
+        s_dim, r_dim, r2_dim = entry["shape"]
+        kdim = S.shape[-1]
+        rho_eff = min(rho, kdim)
+        # truncate batched: V_trunc[j] = U[j, :, :rho] diag(S[j, :rho]) Vt[j, :rho, :]
+        S_trunc = S[..., :rho_eff]              # (r2, rho)
+        U_trunc = U[..., :rho_eff]              # (r2, d, rho)
+        Vt_trunc = Vt[..., :rho_eff, :]         # (r2, rho, r)
+        # weight U by S along the rho axis, then matmul
+        US = U_trunc * S_trunc.unsqueeze(-2)    # (r2, d, rho)
+        V_trunc = torch.bmm(US, Vt_trunc)       # (r2, d, r)
+        # C_new[:, :, j] = R_pinv @ V_trunc[j]
+        # batched: (s, d) @ (r2, d, r) -> (r2, s, r)
+        C_new = torch.einsum("sd,jdr->sjr", R_pinv, V_trunc)  # (s, r2, r)
+        # original C is (s, r, r) indexed as C[:, :, j], so we need (s, r, r)
+        # with the j-axis as the last dim
+        # C_new currently (s, r2, r): permute to (s, r, r2)
+        C_new = C_new.permute(0, 2, 1).contiguous()   # (s, r, r2)
+        saved[li] = ffn.C.data.clone()
+        ffn.C.data = C_new.to(entry["dtype"])
+
     try:
         yield
     finally:
@@ -199,17 +245,24 @@ def run_diagonal_projection(model, val_inp, val_tgt, batch_size, device,
 
 
 def run_rank_truncation(model, val_inp, val_tgt, batch_size, device,
-                         rho_values, baseline_ppl=None, baseline_rtol=0.01):
+                         rho_values, baseline_ppl=None, baseline_rtol=0.01,
+                         pinv_rtol=1e-4):
     """sweep per-gate svd truncation rank rho, evaluate val ppl at each.
+
+    builds the (R_pinv, U, S, Vt) cache once and reuses it across every rho
+    -- the SVD only depends on (R, C^(j)), not on rho. this turns r per-gate
+    SVDs per rho into one batched SVD per layer for the whole sweep.
 
     sanity check: at rho >= min(d, r) the pinv-roundtrip should reproduce
     the trained C exactly up to numerical noise, so the curve at the largest
     rho should match baseline. if not, R is too ill-conditioned for the
     explicit-tolerance pinv to be meaningful and the curve is unreliable.
     """
+    log("info", "building rank-truncation cache (one batched SVD per layer)")
+    cache = _build_truncation_cache(model, pinv_rtol=pinv_rtol)
     out = []
     for rho in rho_values:
-        with truncated_per_gate(model, rho):
+        with truncated_per_gate(model, rho, cache=cache):
             ppl = eval_perplexity(model, val_inp, val_tgt, batch_size, device)
         log("eval", f"rho={rho:3d} | perplexity={ppl:.3f}")
         out.append({"rho": rho, "perplexity": ppl})
