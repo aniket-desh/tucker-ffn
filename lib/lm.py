@@ -89,6 +89,8 @@ class FFNConfig:
     s: int = None          # for tucker (defaults to r)
     diagonal_only: bool = False  # for tucker
     diagonal_bias_init: bool = False  # init tucker C with superdiagonal bias
+    diag_bias_eps: float = 1e-2       # off-diag noise std multiplier (eps/r)
+    legacy_init: bool = False         # reproduce older (incorrect) init scaling
 
 
 def build_ffn(d, cfg):
@@ -100,6 +102,8 @@ def build_ffn(d, cfg):
         s = cfg.s if cfg.s is not None else cfg.r
         return TuckerFFN(d, r=cfg.r, s=s, diagonal_only=cfg.diagonal_only,
                           diagonal_bias_init=cfg.diagonal_bias_init,
+                          diag_bias_eps=cfg.diag_bias_eps,
+                          legacy_init=cfg.legacy_init,
                           bias=False)
     raise ValueError(cfg.kind)
 
@@ -197,14 +201,17 @@ def matched_swiglu_for_tucker(d, r, s):
 
 def make_lm(kind, d, n_heads, n_layers, vocab_size, max_seq_len,
             m=None, r=None, s=None, diagonal_only=False,
-            diagonal_bias_init=False, tied=True):
+            diagonal_bias_init=False, diag_bias_eps=1e-2,
+            legacy_init=False, tied=True):
     """convenience factory. kind in {"swiglu","tucker"}."""
     if kind == "swiglu":
         ffn = FFNConfig(kind="swiglu", m=m)
     elif kind == "tucker":
         ffn = FFNConfig(kind="tucker", r=r, s=s,
                           diagonal_only=diagonal_only,
-                          diagonal_bias_init=diagonal_bias_init)
+                          diagonal_bias_init=diagonal_bias_init,
+                          diag_bias_eps=diag_bias_eps,
+                          legacy_init=legacy_init)
     else:
         raise ValueError(kind)
     cfg = LMConfig(

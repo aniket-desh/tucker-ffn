@@ -152,7 +152,9 @@ def train_one(arch, seed, args, device, val_inp, val_tgt, tokenizer,
                          n_layers=args.n_layers, vocab_size=args.vocab_size,
                          max_seq_len=args.seq_len, r=args.tucker_r,
                          s=args.tucker_s,
-                         diagonal_bias_init=args.tucker_diagonal_bias_init)
+                         diagonal_bias_init=args.tucker_diagonal_bias_init,
+                         diag_bias_eps=args.tucker_diag_bias_eps,
+                         legacy_init=args.tucker_legacy_init)
     elif arch == "tucker_diag":
         model = make_lm("tucker", d=args.d, n_heads=args.n_heads,
                          n_layers=args.n_layers, vocab_size=args.vocab_size,
@@ -203,6 +205,8 @@ def train_one(arch, seed, args, device, val_inp, val_tgt, tokenizer,
         "swiglu_m": args.swiglu_m,
         "tucker_r": args.tucker_r, "tucker_s": args.tucker_s,
         "tucker_diagonal_bias_init": bool(args.tucker_diagonal_bias_init),
+        "tucker_diag_bias_eps": float(args.tucker_diag_bias_eps),
+        "tucker_legacy_init": bool(args.tucker_legacy_init),
         "tucker_core_lr_scale": float(args.tucker_core_lr_scale),
         "batch_size": args.batch_size, "max_tokens": args.max_tokens,
         "peak_lr": args.peak_lr, "warmup_steps": args.warmup_steps,
@@ -351,6 +355,17 @@ def main():
                              "deviate into off-diagonal interactions only "
                              "when training prefers it. parameterization "
                              "unchanged.")
+    parser.add_argument("--tucker_diag_bias_eps", type=float, default=1e-2,
+                        help="off-diagonal noise std multiplier for "
+                             "diagonal_bias_init (final std = eps / r). "
+                             "small values keep the warm-start close to "
+                             "exactly diagonal.")
+    parser.add_argument("--tucker_legacy_init", action="store_true",
+                        help="reproduce the older (incorrect) full-core init "
+                             "scaling std=1/sqrt(r) instead of std=1/r. "
+                             "needed for exact reproduction of "
+                             "results/exp11/tucker_seed0/ and the early "
+                             "hill-climb runs (results/exp11_hc{,_v2}/).")
     parser.add_argument("--warmup_steps", type=int, default=200)
     parser.add_argument("--eval_every_tokens", type=int, default=2_000_000)
     parser.add_argument("--n_val_seqs", type=int, default=128)

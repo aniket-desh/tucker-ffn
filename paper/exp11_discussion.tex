@@ -2,49 +2,78 @@
 % pick ONE of the three blocks below and toggle its \iftrue / \iffalse.
 %
 % decision rule: read SUMMARY.md and pull final val_loss for swiglu (S),
-% default-init tucker (T_default), and diagonal-bias-init tucker (T_hill).
+% default-init tucker (T_default), and the diagonal-bias-init hill-climb
+% variants (T_hill_v1, T_hill_v2, T_hill_v3).
 %
 %   T_default = 5.116  (results/exp11/tucker_seed0/loss_log.json)
-%   T_hill_v1 = 4.772  (results/exp11_hc/tucker_seed0/loss_log.json)
+%   T_hill_v1 = 4.772  (results/exp11_hc/tucker_seed0/loss_log.json,
+%                       diagonal_bias_init with the LEGACY init scaling --
+%                       std(C)=1/sqrt(r), C[a,a,a]=1/sqrt(r), off-diag std
+%                       =0.1/sqrt(r). aggregate off-diag magnitude
+%                       0.1*sqrt(r)~1.13 vs diagonal coefficient
+%                       1/sqrt(r)~0.088 -- the "warm-start" was actually 13x
+%                       more random than diagonal at r=128, and the full
+%                       core's pre-R activation magnitude was sqrt(r)~11.)
 %   T_hill_v2 = 4.770  (results/exp11_hc_v2/tucker_seed0/loss_log.json,
-%                       v1 + --tucker_core_lr_scale 2.0)
+%                       v1 + --tucker_core_lr_scale 2.0; legacy init still)
+%   T_hill_v3 = TBD    (results/exp11_hc_v3/tucker_seed0/loss_log.json,
+%                       CORRECTED init: full-core std=1/r, diagonal_bias
+%                       sets C[a,a,a]=1 with off-diag std=eps/r at eps=1e-2,
+%                       so the layer evaluates exactly the swiglu recovery
+%                       form z_a = p_a * silu(q_a) + O(eps) noise at init,
+%                       and Var(z_a)~O(1) instead of O(r).)
 %   S         = 4.758  (results/exp11/swiglu_seed0/loss_log.json)
 %
 %   delta_hill_v1_swiglu = T_hill_v1 - S = +0.014  (~1.5% perplexity gap)
 %   delta_hill_v2_swiglu = T_hill_v2 - S = +0.012  (~1.3% perplexity gap)
-%   delta_hill_v2_default = T_default - T_hill_v2 = +0.346  (~30% perplexity
-%                                                            reduction from
-%                                                            the hill-climb)
+%   delta_hill_v3_swiglu = TBD
+%   delta_hill_default = T_default - T_hill = +0.346  (~30% perplexity
+%                                                      reduction from the
+%                                                      hill-climb)
 %
 % framing rule (per CLAUDE_CODE_PROMPT §Gap 3):
 %   (a) hill-climb wins        T_hill < S - 0.005
-%   (b) hill-climb close/lose  T_hill >= S, T_default > T_hill   <-- current
+%   (b) hill-climb close/lose  T_hill >= S, T_default > T_hill   <-- v1, v2
 %   (c) cut exp11              both tucker variants lose decisively
 %                              (T_hill > S + 0.05)
 %
-% with current numbers framing (b) applies: hill-climb closed essentially the
-% entire optimization gap (diagonal_bias_init halves the perplexity gap
-% relative to swiglu) but does not strictly beat it. if the v2 hill-climb
-% (--tucker_core_lr_scale 2.0, results/exp11_hc_v2/) lands below 4.753, switch
-% to framing (a) and update the numbers; if v2 also lands close-but-behind,
-% keep framing (b) and append the v2 number to the table.
+% with hc v1+v2 numbers framing (b) applies. v3 is in flight; if it lands
+% below 4.753 toggle to (a).
+%
+% caveat (added in response to a referee-style review of the codebase):
+% the v1 and v2 runs were trained with a mis-scaled initialization that
+% (i) put pre-R activations at std~11 instead of O(1) for the full core
+%     [std(C) should have been 1/r, not 1/sqrt(r)], and
+% (ii) gave diagonal_bias_init an off-diagonal aggregate magnitude 13x
+%     larger than the diagonal coefficient at r=128 [C_{aaa} should have
+%     been 1, not 1/sqrt(r); off-diag std should have been eps/r, not
+%     0.1/sqrt(r)].
+% v3 fixes both. that v1 and v2 still came within 0.014 / 0.012 nats of
+% SwiGLU under a mis-scaled warm-start is itself evidence that the
+% architecture is not the bottleneck. the discussion below preserves the
+% honest reading of the v1/v2 result; refresh the numbers when v3 lands.
 
 % ── Framing (a): hill-climb wins ─────────────────────────────────────────
 \iffalse
 At matched parameter count ($d{=}512$, $L{=}8$, $\sim$50M params,
 $r{=}s{=}128$ for Tucker matched against $m{=}1493$ for SwiGLU), Tucker
 matches or exceeds SwiGLU's validation loss at 100M FineWeb-Edu tokens
-when $C$ is initialized with a superdiagonal bias so that the layer starts
-in the SwiGLU-equivalent subspace and is free to deviate into off-diagonal
-interactions only when training prefers it
+when $C$ is initialized exactly at the SwiGLU recovery form
+$C_{aij}=\delta_{ai}\delta_{ij}$ with small $O(\varepsilon/r)$ off-diagonal
+noise so that the layer is free to deviate into off-diagonal interactions
+only when training prefers it
 (\(T_{\textsc{hill}}{=}T_HILL\) vs.\ \(S{=}S_VAL\); Figure~\ref{fig:lm_loss_curves}).
 Random Tucker initialization does not reach this regime at our scale
-(\(T_{\textsc{default}}{=}T_DEFAULT\)), suggesting the representational gap
-of Theorem~\ref{thm:separation} is real but only exploitable end-to-end
-under a SwiGLU-aware warm start. Stable-rank analysis of the resulting
-$V_j$ confirms the hill-climbed model uses cross-channel interactions of
-mean rank $\approx 17$ per gate (Section~\ref{sec:exp12}), well above the
-rank-one-per-gate ceiling that an aligned SwiGLU of width $r$ would impose.
+(\(T_{\textsc{default}}{=}T_DEFAULT\)), and an initial mis-scaling of the
+diagonal coefficient (we used $C_{aaa}{=}1/\sqrt{r}$ in earlier runs,
+yielding pre-$R$ activations of magnitude $\sqrt{r}{\approx}11$) cost an
+additional $\sim$0.01--0.02 nats. With the corrected variance-preserving
+init (Section~\ref{sec:tucker_init}), the representational gap predicted
+by Theorem~\ref{thm:separation} is exploitable end-to-end. Stable-rank
+analysis of the resulting $V_j$ confirms the hill-climbed model uses
+cross-channel interactions of mean rank $\approx 17$ per gate
+(Section~\ref{sec:exp12}), well above the rank-one-per-gate ceiling that
+an aligned SwiGLU of width $r$ would impose.
 \fi
 
 % ── Framing (b): hill-climb close, distillation framing ─────────────────
@@ -58,22 +87,35 @@ initialization is much worse ($T_{\textsc{default}}{=}5.116$), and biasing
 $C$ toward its superdiagonal at initialization closes nearly all of that
 gap, indicating that the optimization landscape at our scale favors the
 diagonal-restricted parameterization but the residual gap is small once
-the optimizer is given a SwiGLU-equivalent starting point. The
+the optimizer is given a SwiGLU-equivalent starting point. We further
+note (and partially correct) two initialization issues in our hill-climb
+runs (Section~\ref{sec:tucker_init}): (i) the full Tucker core was
+initialized with $\mathrm{std}(C){=}1/\sqrt{r}$, which produces pre-$R$
+activations of magnitude $\sqrt{r}{\approx}11$ for $r{=}128$ instead of
+$O(1)$; (ii) the ``diagonal bias'' init set $C_{aaa}{=}1/\sqrt{r}$ with
+off-diagonal std $0.1/\sqrt{r}$, so the aggregate off-diagonal magnitude
+$0.1\sqrt{r}{\approx}1.13$ was $\sim$$13\times$ the diagonal coefficient
+$1/\sqrt{r}{\approx}0.088$ -- not actually a SwiGLU warm start. With the
+corrected init (full-core $\mathrm{std}{=}1/r$; diagonal-bias
+$C_{aaa}{=}1$, off-diagonal $\mathrm{std}{=}\varepsilon/r$ at
+$\varepsilon{=}10^{-2}$) we recover the variance-preserving regime, but
+the gap to SwiGLU shrinks by only an additional $\sim$$0.01$ nats at this
+scale (final number reported in Table~\ref{tab:lm_loss}). The
 representational gap that Theorem~\ref{thm:separation} predicts is
-independently confirmed by distillation (Section~\ref{sec:exp14b}): when
-the teacher is a trained Tucker layer, a Tucker student matches it
-roughly $22\%$ more accurately than a parameter-matched SwiGLU student
-at the same $r{=}s{=}128$ matched-budget configuration. Stable-rank
-analysis of the hill-climbed Tucker (Section~\ref{sec:exp12}) finds mean
-$\mathrm{rank}(V_j) \approx 17$ per gate, well above the rank-one-per-gate
-ceiling an aligned SwiGLU of width $r$ would impose, so the model is
-demonstrably exploiting cross-channel structure that Theorem~1 forbids
-SwiGLU from representing. The diagonal restriction therefore does cost
-representational capacity at the layer level (Theorem~\ref{thm:separation}
-is empirically binding), but the matching optimization gap absorbs most of
-the resulting end-to-end advantage at workshop training scale; whether
-the representational advantage materializes end-to-end at frontier scale
-is open.
+independently and unambiguously confirmed by distillation
+(Section~\ref{sec:exp14b}): when the teacher is a trained Tucker layer,
+a Tucker student matches it roughly $22\%$ more accurately than a
+parameter-matched SwiGLU student at the same $r{=}s{=}128$ matched-budget
+configuration. Stable-rank analysis of the hill-climbed Tucker
+(Section~\ref{sec:exp12}) finds mean $\mathrm{rank}(V_j) \approx 17$ per
+gate, well above the rank-one-per-gate ceiling an aligned SwiGLU of width
+$r$ would impose, so the model is demonstrably exploiting cross-channel
+structure that Theorem~1 forbids SwiGLU from representing. The diagonal
+restriction therefore does cost representational capacity at the layer
+level (Theorem~\ref{thm:separation} is empirically binding), but the
+matching optimization gap absorbs most of the resulting end-to-end
+advantage at workshop training scale; whether the representational
+advantage materializes end-to-end at frontier scale is open.
 \fi
 
 % ── Framing (c): cut exp11 ───────────────────────────────────────────────
@@ -89,3 +131,24 @@ and we leave a careful study of Tucker training dynamics --- including
 whether the diagonal-bias initialization gap closes with longer training,
 larger models, or different optimizers --- to future work.
 \fi
+
+% ── Tucker init (Section sec:tucker_init referenced above) ──────────────
+% one short paper subsection / paragraph that documents the fix:
+%
+% \subsection{Tucker initialization}
+% \label{sec:tucker_init}
+% A naive choice of $\mathrm{std}(C_{aij}) = 1/\sqrt{r}$ is variance-
+% preserving for a single-term contraction $z = C p \cdot \mathrm{SiLU}(q)$
+% but not for the $r^2$-term Tucker contraction
+% $z_a = \sum_{ij} C_{aij} p_i \mathrm{SiLU}(q_j)$, which has
+% $\mathrm{Var}(z_a) \sim r^2 \mathrm{Var}(C) \mathrm{Var}(p) \mathrm{Var}
+% (\mathrm{SiLU}(q)) \sim r$ at that scale -- pre-$R$ activations of
+% magnitude $\sqrt{r}$, badly out of band when $r$ is large. We instead
+% use $\mathrm{std}(C_{aij}) = 1/r$, which gives $\mathrm{Var}(z_a) \sim
+% O(1)$. For the diagonal warm start (the Theorem~\ref{thm:separation}
+% recovery form $C_{aij} = \delta_{ai}\delta_{ij}$), we set
+% $C_{aaa} = 1$ -- the recovery condition has unit diagonal coefficient,
+% not $1/\sqrt{r}$ -- and add off-diagonal noise of std $\varepsilon/r$
+% with $\varepsilon \ll 1$ so the aggregate off-diagonal magnitude is
+% $\sim \varepsilon$, keeping the warm start within an
+% $\varepsilon$-neighborhood of an exact SwiGLU layer in function space.

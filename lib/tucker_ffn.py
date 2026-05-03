@@ -64,16 +64,26 @@ class TuckerFFN(nn.Module):
     """
 
     def __init__(self, d, r, s=None, diagonal_only=False, bias=False,
-                  diagonal_bias_init=False):
+                  diagonal_bias_init=False, diag_bias_eps=1e-2,
+                  legacy_init=False):
         """Tucker-core ffn.
 
         diagonal_bias_init: when True (and diagonal_only is False), initialize
-            C with C[a,a,a] = 1/sqrt(r) on the superdiagonal and small i.i.d.
-            noise off-diagonal. This warm-starts the layer near a swiglu-shaped
-            block (note section IV recovery condition) so the model can deviate
-            into off-diagonal interactions only when training prefers it.
-            This is purely an initialization choice; the parameterization and
-            forward computation are unchanged.
+            C with C[a,a,a] = 1 on the superdiagonal and small i.i.d. noise
+            (std = diag_bias_eps / r) off-diagonal. This is an exact swiglu
+            warm-start: at init the layer evaluates the diagonal recovery
+            form z_a = p_a * silu(q_a) + O(eps/r) noise, so the model starts
+            in the SwiGLU-equivalent subspace and is free to deviate into
+            off-diagonal interactions only when training prefers it.
+            (Note section IV recovery condition is C_aij = delta_ai delta_ij,
+            which has diagonal coefficient 1, not 1/sqrt(r).)
+
+        Init scaling for the full core:
+            std(C_aij) = 1/r so that Var(z_a) ~ r^2 * 1/r^2 = O(1). The old
+            init of 1/sqrt(r) gave Var(z_a) ~ r, producing pre-R activations
+            of magnitude sqrt(r) (~11 for r=128) which destabilizes training.
+            Set legacy_init=True to recover the old (incorrect) scaling
+            for reproducibility of older runs.
         """
         super().__init__()
         if s is None:
@@ -93,19 +103,34 @@ class TuckerFFN(nn.Module):
         if diagonal_only:
             kdim = min(r, s)
             self.c_diag = nn.Parameter(torch.empty(kdim))
-            nn.init.normal_(self.c_diag, mean=0.0, std=1.0 / math.sqrt(r))
+            # diagonal-only width-r block: setting c_diag = 1 makes the
+            # layer evaluate z_a = p_a * silu(q_a), the swiglu recovery
+            # form, with O(1) outputs. legacy path preserved for tests.
+            if legacy_init:
+                nn.init.normal_(self.c_diag, mean=0.0, std=1.0 / math.sqrt(r))
+            else:
+                nn.init.ones_(self.c_diag)
             self.register_buffer("C", None, persistent=False)
         else:
             self.C = nn.Parameter(torch.empty(s, r, r))
             if diagonal_bias_init:
+                # exact diagonal warm-start (Note IV recovery condition):
+                # C[a,a,a] = 1, off-diag = small noise of variance-preserving
+                # scale eps/r so off-diag aggregate magnitude << 1.
                 nn.init.normal_(self.C, mean=0.0,
-                                 std=0.1 / math.sqrt(r))
+                                 std=diag_bias_eps / r)
                 kdim = min(r, s)
                 with torch.no_grad():
                     idx = torch.arange(kdim)
-                    self.C[idx, idx, idx] = 1.0 / math.sqrt(r)
-            else:
+                    self.C[idx, idx, idx] = 1.0
+            elif legacy_init:
+                # old (incorrect) scaling -- kept reachable for reproducing
+                # results/exp11/tucker_seed0 and results/exp11_hc{,_v2}/.
                 nn.init.normal_(self.C, mean=0.0, std=1.0 / math.sqrt(r))
+            else:
+                # variance-preserving full-core init: Var(z_a) = r^2 * Var(C)
+                # * Var(p) * Var(silu(q)) ~ r^2 * 1/r^2 * 1 * 0.5 ~ O(1)
+                nn.init.normal_(self.C, mean=0.0, std=1.0 / r)
 
         if bias:
             self.bias = nn.Parameter(torch.zeros(d))
