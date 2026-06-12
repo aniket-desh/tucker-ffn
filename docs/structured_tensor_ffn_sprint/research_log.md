@@ -57,3 +57,20 @@ Sprint start (UTC): **2026-06-12T03:22Z**. Hard ceiling 24h → must stop by 202
 - Paper scaffold compiles (tectonic); theory section drafted in paper/main.tex.
 - LM runs: GPU0 swiglu seed0 at 54M tokens (val 4.98); GPU1 tucker seed0 at 20M
   (contended by exp20, recovers when exp20 finishes in ~15 min).
+
+## T+2:15 — Mid-sprint status
+
+- exp18: CP + LL1 teachers complete (3 seeds), Tucker teacher in progress. Pattern so
+  far is fully symmetric "matched structure wins": each student family is best on its
+  own teacher; Tucker student is poor on CP/LL1 teachers at matched budget (its sr²
+  core eats the budget leaving 17 routes).
+- exp20: 15/18 runs. Emergence speed identical across all FFN archs (steps-to-90% =
+  140–180 for swiglu/ll1_l{1,4,16}; attn-only faster at 80). Clean negative for the
+  "FFN structure changes induction emergence" hypothesis so far; tucker runs next —
+  watching whether the "solves task without canonical induction attention" anomaly
+  from the toy-scale smoke replicates.
+- LM: swiglu_seed0 at 75M tokens val 4.84 (on track vs prior 4.758@100M).
+  tucker_seed0 at 26M val 5.42, no longer contended (exp20 ending).
+- Fig 1 ladder diagram drafted; paper theory+appendix+related work compile.
+- Queued: exp21 (Qwen distillation) on GPU0 when exp18 ends; throughput bench when a
+  GPU is fully idle; exp19/exp22 when LM checkpoints land.

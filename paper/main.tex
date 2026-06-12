@@ -229,7 +229,53 @@ identifiable parameterization.
 
 \section{Related work}
 \label{sec:related}
-[placeholder]
+
+\paragraph{Gated FFNs and bilinear MLPs.}
+GLU-family FFNs outperform ReLU/GELU MLPs at matched scale and are standard in modern
+LMs \citep{shazeer2020glu}. \citet{pearce2025bilinear} study bilinear MLPs --- GLUs
+with the element-wise nonlinearity removed --- which are exactly third-order tensors,
+and show that eigendecomposition of those tensors yields interpretable low-rank
+structure; \citet{dooms2024case} make the architectural case. Our object differs in
+keeping the gate: SwiGLU is exactly a \emph{routed} CP tensor field whose routing is
+input-dependent, and prior experiments on this codebase show the routing is
+load-bearing (constant-$\alpha$ ablations degrade pretrained Qwen models by four to
+six orders of magnitude in perplexity), so the bilinear picture alone does not
+describe trained SwiGLU models. \citet{jayakumar2020multiplicative} situate gating
+within multiplicative interactions broadly; we study the specific tensor
+decompositions a gated FFN admits.
+
+\paragraph{Tensor decompositions in neural networks.}
+CP, Tucker, and block-term decompositions are classical
+\citep{kolda2009tensor,delathauwer2008blockterm}. In deep learning they are most
+often used for \emph{compression} of trained weights \citep{novikov2015tensorizing}
+or for expressivity analyses of idealized architectures \citep{cohen2016expressive};
+factorization machines use low-rank multiplicative atoms for feature interactions
+\citep{rendle2010factorization}; \citet{loconte2024relationship} connect tensor
+factorizations to probabilistic circuits. Our use is different: the decomposition is
+not applied post hoc to a weight tensor --- the FFN \emph{is} the decomposition, and
+we ask which member of the CP$\to$LL1$\to$Tucker family is the right parameterization
+to train.
+
+\paragraph{Sparse dictionaries and weight-based interpretability.}
+Sparse autoencoders and transcoders decompose activations into feature directions
+\citep{bricken2023monosemanticity,dunefsky2024transcoders,paulo2025transcoders}.
+The routed-CP/LL1 view is complementary: atoms and routes are \emph{architectural}
+objects fixed in the weights, with the input-dependence isolated in scalar routing
+coefficients --- the same invariant-dictionary + input-dependent-coefficients
+factorization transcoders recover empirically.
+
+\paragraph{Structured matrices for efficiency.}
+Monarch and butterfly factorizations replace dense projections with products of
+block-diagonal or sparse factors \citep{dao2022monarch,dao2019butterfly}; LoRA
+demonstrates that rank constraints are effective in transformers \citep{hu2022lora}.
+These address the \emph{factor matrices}; our axis is the \emph{latent core}
+connecting them. The two are orthogonal and composable.
+
+\paragraph{Circuit-level evaluation.}
+Induction heads are the canonical recognizable circuit
+\citep{elhage2021mathematical,olsson2022context}; we use a minimal induction task to
+ask whether FFN tensor structure changes the emergence or mechanism of an
+attention-side circuit.
 
 \bibliographystyle{plainnat}
 \bibliography{refs}
