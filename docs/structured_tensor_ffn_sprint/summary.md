@@ -25,11 +25,12 @@ beats rank-one atoms in all nine layer×budget cells (~30× seed noise; 2–4% r
 and dense Tucker loses by 35–130%. Evidence: positive, robust, modest effect size.
 
 **3. At LM scale the route/atom trade is loss-neutral — and LL1 is faster.** (Table
-lm_final, Fig lm_curves) From-scratch 52.5M-param/100M-token training: LL1(L=4)
-4.7472±0.0041 vs SwiGLU 4.7542±0.0104 (tie, t≈1.1) vs Tucker 4.7623±0.0072 (LL1
-ahead, t≈3.1); L-sweep flat with a shallow dip at L=4–8 (L=1: 4.765, L=8: 4.742).
-Throughput at matched FLOPs: LL1 75K tok/s > SwiGLU 71K > Tucker 36.5K (2.06×
-slower). Evidence: tie is solid; throughput differences are large and real.
+lm_final, Fig lm_curves) From-scratch 52.5M-param/100M-token training: every LL1
+L∈{2,4,8} (n=3 each: 4.741/4.747/4.743) sits nominally below SwiGLU (n=5,
+4.751±0.016) but no comparison is significant (Welch |t|≤1.4; pooled t=1.0) — a
+robust tie; Tucker (4.763±0.009) is behind LL1 beyond noise (t=3.8 vs L=8).
+Throughput at matched FLOPs: LL1 75-76K tok/s > SwiGLU 71K > Tucker 36.5K (2.06×
+slower). Evidence: tie is solid (14 runs); throughput differences are large and real.
 
 **4. Three independent measurements converge on per-route rank ≈ 4.** The
 unconstrained Tucker core, free to use rank 128, learns per-gate stable rank
@@ -152,15 +153,19 @@ real LM computation.
 52.5M-param LMs, 100M FineWeb-Edu tokens, matched FFN budgets, identical
 hyperparameters (3 seeds each; tucker seed 2 rerunning after a scheduling restart):
 
-| arch | final val loss (mean ± std, n=3) | ppl | train tok/s (A40, idle) |
+| arch | final val loss (mean ± sample std) | ppl | train tok/s (A40, idle) |
 |---|---|---|---|
-| LL1 (L=4, B=498) | **4.7472 ± 0.0041** | 115.3 | 75,251 |
-| SwiGLU (m=1493) | 4.7542 ± 0.0104 | 116.1 | 71,373 |
-| Tucker (r=s=128, diag-init) | 4.7623 ± 0.0072 | 117.0 | 36,545 |
+| LL1 L=2 (n=3) | 4.7409 ± 0.0044 | 114.5 | 76,162 |
+| LL1 L=4 (n=3) | 4.7472 ± 0.0050 | 115.3 | 75,251 |
+| LL1 L=8 (n=3) | **4.7427 ± 0.0025** | 114.7 | 74,757 |
+| SwiGLU (n=5) | 4.7509 ± 0.0157 | 115.7 | 71,373 |
+| Tucker (n=3, diag-init) | 4.7626 ± 0.0087 | 117.1 | 36,545 |
 
-Welch t: LL1 vs SwiGLU ≈ 1.1 — **a statistical tie**; we do not claim an LL1 loss win.
-LL1 vs Tucker ≈ 3.1 — LL1 is ahead of dense Tucker beyond seed noise. What is
-decisively not a tie: throughput. At matched parameters and matched FLOPs
+Welch t vs SwiGLU: L=2: −1.34, L=4: −0.49, L=8: −1.15, pooled L∈{2,4,8}: −1.02 —
+**a statistical tie** (every L≥2 nominally below the SwiGLU mean; LL1's seed variance
+is 3–6× smaller, an observation we do not over-read at n=3). LL1(L=8) vs Tucker:
+t = −3.8 — LL1 is ahead of dense Tucker beyond seed noise. What is decisively not a
+tie: throughput. At matched parameters and matched FLOPs
 (4.59e6 MACs/token/layer ±0.2%), LL1 trains 5–7% faster than SwiGLU (smaller gate
 GEMM) and 2.06× faster than Tucker, whose core contraction is GEMM-unfriendly.
 SwiGLU seed0 reproduces the prior draft's result (4.763 vs 4.758). L-sweep at
@@ -238,13 +243,14 @@ block-structured.
 
 ### 8.5 LM L-sweep (complete)
 
-| L | 1 | 2 | 4 (3 seeds) | 8 | 16 | — | SwiGLU | Tucker |
+| L | 1 (n=1) | 2 (n=3) | 4 (n=3) | 8 (n=3) | 16 (n=1) | — | SwiGLU (n=5) | Tucker (n=3) |
 |---|---|---|---|---|---|---|---|---|
-| val loss | 4.765 | 4.740 | 4.747±0.004 | 4.742 | 4.750 | | 4.754±0.010 | 4.763±0.007 |
+| val loss | 4.765 | 4.741±0.004 | 4.747±0.005 | 4.743±0.003 | 4.750 | | 4.751±0.016 | 4.763±0.009 |
 
-The sweep is flat: every L ≥ 2 sits at or below the SwiGLU mean; L=1 reproduces
-SwiGLU (control); no sharp optimum, consistent with a wide loss-neutral plateau in
-the route/atom trade. Realized per-route stable ranks under-saturate caps as L grows
+The sweep is flat: every L ≥ 2 sits below the SwiGLU mean (within its band); L=1
+reproduces SwiGLU (control); no sharp optimum — a wide loss-neutral plateau in the
+route/atom trade. (L∈{2,4,8} strengthened to 3 seeds and SwiGLU to 5 in the
+seed-strengthening pass.) Realized per-route stable ranks under-saturate caps as L grows
 (L=2→1.83, L=4→3.26, L=8→5.62), and routing diffuseness rises monotonically with L
 (eff-active fraction 0.50→0.58→0.63→0.65), interpolating from SwiGLU toward Tucker
 (0.65).

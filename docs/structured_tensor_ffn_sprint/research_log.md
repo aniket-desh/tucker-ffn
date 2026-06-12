@@ -149,3 +149,20 @@ structure; per-route rank ~4-8 captures it at matched compression budget.
 - Red-team pass (docs/paper_writing/red_team.md): fixed gauge-freedom transpose,
   GEMM-factor sloppiness, softened "identifiable parameterization", added
   init-conditionality caveat for the stable-rank result. All numbers traced to JSONs.
+
+## T+5:20 (08:42 UTC) — Seed-strengthening pass
+
+- All 9 phases complete and pushed; paper at 15 pp. Remaining wall budget is large, so
+  addressing the biggest red-team weakness (single-seed L-sweep): launched ll1_l2
+  seeds 1,2 (GPU0), ll1_l8 seeds 1,2 (GPU1), then swiglu seeds 3,4 — 6 runs ≈ 2.5h.
+  If L=2/8 hold at ~4.74, every L≥2 point gets multi-seed support; pooled comparison
+  vs swiglu (n=5) becomes meaningfully powered.
+
+## T+7:30 (10:50 UTC) — Seed-strengthening complete; final stats
+
+- Final LM table (14 runs): swiglu n=5 4.7509±0.0157 | ll1_l2 4.7409±0.0044 |
+  ll1_l4 4.7472±0.0050 | ll1_l8 4.7427±0.0025 | tucker 4.7626±0.0087 (sample std).
+- The new swiglu seeds (4.763, 4.729) WIDENED the baseline spread — the tie verdict
+  is now robust (all LL1 |t|≤1.4, pooled t=1.0); LL1 vs Tucker significant (t=3.8).
+  Honest secondary observation: LL1 seed variance 3-6× smaller than SwiGLU's.
+- Paper, summary, figures, tables all updated to exact full-precision numbers.

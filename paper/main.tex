@@ -56,7 +56,7 @@ and the nominally most expressive dense core loses every matched-budget comparis
 On real pretrained FFN layers (Qwen2.5-0.5B), LL1 students with $L\approx4$--$8$
 compress the layer's function better than rank-one atoms in every layer and budget
 tested, and far better than a dense core. Trained from scratch at matched parameters
-and FLOPs (52.5M parameters, 100M tokens, 3 seeds), SwiGLU, LL1($L{=}4$), and dense
+and FLOPs (52.5M parameters, 100M tokens, 3--5 seeds), SwiGLU, LL1, and dense
 Tucker tie on validation loss --- while LL1 trains 5--7\% faster than SwiGLU and
 $2.1\times$ faster than Tucker, and an unconstrained Tucker core spontaneously learns
 per-route stable rank $\approx 4$, the same value at which LL1's blocks saturate and
@@ -138,8 +138,9 @@ Our contributions:
 \item \textbf{Real FFN maps:} distilling Qwen2.5-0.5B layers, LL1 with
   $L\approx4$--$8$ beats rank-one atoms in all nine layer$\times$budget cells
   ($\sim$30$\times$ seed noise) and the dense core loses by 35--130\%.
-\item \textbf{End-to-end:} at 52.5M parameters / 100M tokens (3 seeds), LL1($L{=}4$),
-  SwiGLU, and Tucker tie on loss; LL1 is 5--7\% faster than SwiGLU and $2.1\times$
+\item \textbf{End-to-end:} at 52.5M parameters / 100M tokens (3--5 seeds),
+  LL1($L\in\{2,4,8\}$), SwiGLU, and Tucker tie on loss (every $L\ge2$ nominally below
+  the SwiGLU mean; Welch $|t|\le1.4$); LL1 is 5--7\% faster than SwiGLU and $2.1\times$
   faster than Tucker; and the unconstrained Tucker core spontaneously learns
   per-route stable rank $\approx 4$ --- the value LL1 hard-codes.
 \item \textbf{Interpretability (negative):} measured proxies — routing diffuseness,
@@ -441,17 +442,22 @@ on language?
 
 \textbf{Setup.} LLaMA-style decoders (52.5M parameters, $d{=}512$, 8 layers) trained
 from scratch on 100M FineWeb-Edu tokens with identical hyperparameters, differing
-only in FFN (Table~\ref{tab:configs}); 3 seeds for SwiGLU, LL1($L{=}4$), and Tucker;
-1 seed for the remaining $L$ values. Tucker uses its best-known (diagonal warm-start)
-initialization. Throughput is measured separately on an idle A40.
+only in FFN (Table~\ref{tab:configs}); 5 seeds for SwiGLU, 3 each for
+LL1($L\in\{2,4,8\}$) and Tucker, 1 each for LL1($L\in\{1,16\}$). Tucker uses its
+best-known (diagonal warm-start) initialization. Throughput is measured separately on
+an idle A40.
 
-\textbf{Result.} Final validation loss: LL1($L{=}4$) $4.7472 \pm 0.0041$, SwiGLU
-$4.7542 \pm 0.0104$, Tucker $4.7626 \pm 0.0071$ (mean $\pm$ std over 3 seeds;
-Figure~\ref{fig:lm}). LL1 vs.\ SwiGLU is a statistical tie (Welch $t \approx 1.1$);
-LL1 vs.\ Tucker separates ($t \approx 3.1$). The $L$-sweep is flat with a shallow
-optimum away from the corners (single seeds: $L{=}1$: $4.765$ --- matching SwiGLU's
-range and confirming the $L{=}1\equiv$SwiGLU control end-to-end; $L{=}2$: $4.740$;
-$L{=}8$: $4.742$; $L{=}16$: $4.750$). Training throughput at matched FLOPs
+\textbf{Result.} Final validation loss (mean $\pm$ sample std; Figure~\ref{fig:lm}):
+SwiGLU $4.7509 \pm 0.0157$ ($n{=}5$); LL1 $4.7409 \pm 0.0044$ at $L{=}2$,
+$4.7472 \pm 0.0050$ at $L{=}4$, $4.7427 \pm 0.0025$ at $L{=}8$ ($n{=}3$ each);
+Tucker $4.7626 \pm 0.0087$ ($n{=}3$). Every LL1 point with $L \ge 2$ is nominally
+below the SwiGLU mean, but no LL1--SwiGLU comparison is significant (Welch
+$|t| \le 1.4$; pooled $L\in\{2,4,8\}$ vs.\ SwiGLU: $t = 1.0$): \emph{a statistical
+tie}. LL1 vs.\ Tucker does separate ($t = 3.8$ at $L{=}8$). Single-seed
+endpoints: $L{=}1$: $4.765$ (inside the SwiGLU seed range, confirming the
+$L{=}1\equiv$SwiGLU control end-to-end); $L{=}16$: $4.750$. A secondary observation
+we do not over-read: LL1's seed variance is $3$--$6\times$ smaller than SwiGLU's at
+every $L$. Training throughput at matched FLOPs
 ($4.59{\times}10^6$ MACs/token/layer for every architecture): LL1 75.3K tokens/s,
 SwiGLU 71.4K, Tucker 36.5K --- LL1 is $5$--$7\%$ faster than SwiGLU (its gate
 projection is a factor $\tfrac{2L+1}{3}$ narrower, and the gating multiply touches
@@ -466,7 +472,7 @@ core costs $2\times$ wall-clock for nominally identical FLOPs and slightly worse
 loss.
 
 \textbf{Caveat.} 52.5M parameters, 100M tokens, one dataset, hyperparameters
-inherited from SwiGLU tuning; the $L$-sweep is single-seed away from $L{=}4$.
+inherited from SwiGLU tuning; the $L$-sweep endpoints ($L{=}1, 16$) are single-seed.
 
 \begin{figure}[t]
 \centering
@@ -477,11 +483,12 @@ inherited from SwiGLU tuning; the $L$-sweep is single-seed away from $L{=}4$.
 \includegraphics[width=\textwidth]{figures/lm_curves.pdf}
 \end{minipage}
 \caption{Matched-budget language modeling (52.5M parameters, 100M FineWeb-Edu
-tokens). Left: final validation loss across the LL1 block-rank sweep (error bar =
-std over 3 seeds at $L{=}4$; other $L$ single-seed), with SwiGLU (blue) and dense
-Tucker (red) 3-seed bands. Every $L \ge 2$ sits at or below the SwiGLU mean; the
-sweep is flat. Right: validation-loss curves (mean $\pm$ std over 3 seeds) ---
-the three families are indistinguishable through training.}
+tokens). Left: final validation loss across the LL1 block-rank sweep (error bars =
+std over 3 seeds at $L\in\{2,4,8\}$; $L\in\{1,16\}$ single-seed), with SwiGLU
+($n{=}5$, blue) and dense Tucker ($n{=}3$, red) mean$\,\pm\,$std bands. Every
+$L \ge 2$ sits below the SwiGLU mean but within its band: a statistical tie. Right:
+validation-loss curves (mean $\pm$ std) --- the three families are indistinguishable
+through training.}
 \label{fig:lm}
 \end{figure}
 
