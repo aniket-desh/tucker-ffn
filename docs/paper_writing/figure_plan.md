@@ -4,9 +4,9 @@ Color semantics everywhere: SwiGLU/CP **blue**, LL1/block-CP **green**, dense Tu
 **red**, attn-only/baselines **gray**, structured-Tucker/other **orange**.
 
 ## Fig 1 — Architecture ladder (diagram, TikZ or matplotlib)
-A) SwiGLU as routed CP: x → (w_j, g_j) projections → rank-1 atom u_j⊗w_j⊗g_j routed by
-   α_j(x)=σ(g_j^Tx). One gate : one atom.
-B) LL1/block-CP: one gate g_b routes a rank-L block U_bA_b^T. One gate : L atoms.
+A) SwiGLU as routed CP: x → (w_j, g_j) projections → rank-1 atom $u_j \otimes w_j \otimes g_j$ routed by
+   $\alpha_j(x)=\sigma(g_j^\top x)$. One gate : one atom.
+B) LL1/block-CP: one gate g_b routes a rank-$L$ block $U_b A_b^\top$. One gate : L atoms.
 C) Dense Tucker: all-to-all core C couples every p_i to every q_j. r gates : full-rank V_j,
    gauge-entangled.
 D) The dial: per-gate rank L, with param-matched atom/gate counts annotated

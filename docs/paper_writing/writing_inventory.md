@@ -2,7 +2,7 @@
 
 ## Experiments actually run (sprint)
 1. lib unit tests: diag-Tucker≡SwiGLU; LL1 L=1≡SwiGLU (0 err); LL1≡block-sparse Tucker
-   (1e-6); rank(V_b)≤L; param counts exact.
+   (1e-6); $\operatorname{rank}(V_b)\le L$; param counts exact.
 2. exp18: synthetic teacher-student. 3 teachers (CP 32 atoms / LL1 16×L*=4 / dense
    Tucker r=16, all d=64, unit-variance outputs) × 7 lsweep students at 9216-param
    budget × 3 seeds + budget sweep {0.25,0.5,2}× for swiglu/ll1_l4/tucker. COMPLETE
@@ -32,7 +32,7 @@
 ## Theory results that are exact
 - routed-CP form; superdiagonal-core equivalence; aligned-width theorem + LL1 reading;
   LL1 nesting (SwiGLU at L=1, block-sparse Tucker generally); param/atom/route algebra
-  (3L/(2L+1) atom multiplier).
+  ($3L/(2L+1)$ atom multiplier).
 
 ## Empirical results that are preliminary
 - everything at 50M/100M-token scale (single dataset, default hyperparams, ≤3 seeds);

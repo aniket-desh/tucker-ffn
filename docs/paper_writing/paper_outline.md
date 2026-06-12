@@ -12,10 +12,10 @@ bind; structure must match function" if LM is a tie.)
 3. The superdiagonal core is both the interpretability (atomized, identifiable) and the
    restriction (1 route : 1 rank-1 atom).
 4. We study the LL1/block-CP family interpolating CP→Tucker via per-route rank L; at
-   matched params LL1 trades routes for atoms (3L/(2L+1)).
+   matched params LL1 trades routes for atoms ($3L/(2L+1)$).
 5. Results: synthetic — structure must match (error min exactly at teacher rank, both
    resources bind; each family ~machine-precision on own class); real Qwen FFN maps —
-   LL1 L≈4-8 best compressor, Tucker worst; LM at 52.5M/100M tokens — [pending];
+   LL1 $L\approx 4$–$8$ best compressor, Tucker worst; LM at 52.5M/100M tokens — [pending];
    interp proxies — [pending]; induction — null on emergence.
 6. Implication: per-route rank is the design dial; dense Tucker is dominated at fixed
    budget [if confirmed]; SwiGLU sits at L=1 which is [optimal/suboptimal per LM result].
