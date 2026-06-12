@@ -96,6 +96,30 @@ def per_gate_V(ffn):
     return None, None
 
 
+def per_route_V_all(ffn, max_routes=512):
+    """gauge-invariant per-route interaction matrix vec(V) for every arch.
+
+    swiglu: V_j = u_j w_j^T (d, d); ll1: V_b = U_b A_b^T; tucker: V_j = R C^(j)
+    (d, r) — flattened and L2-normalized. For swiglu we subsample routes.
+    """
+    with torch.no_grad():
+        if isinstance(ffn, SwiGLUFFN):
+            W = ffn.up_proj.weight          # (m, d) rows w_j
+            U = ffn.down_proj.weight.T      # (m, d) rows u_j
+            idx = torch.randperm(W.shape[0],
+                                 generator=torch.Generator().manual_seed(1)
+                                 )[:max_routes]
+            V = torch.einsum("md,me->mde", U[idx], W[idx])
+        elif isinstance(ffn, LL1FFN):
+            V = ffn.per_gate_matrices()
+        elif isinstance(ffn, TuckerFFN):
+            V = torch.stack([ffn.R @ ffn.C[:, :, j] for j in range(ffn.r)])
+        else:
+            raise TypeError(type(ffn))
+        Vf = V.reshape(V.shape[0], -1)
+        return Vf / (Vf.norm(dim=1, keepdim=True) + 1e-9)
+
+
 @torch.no_grad()
 def compare_pair(model1, model2, max_units=512, max_v=64):
     out = []
@@ -112,6 +136,18 @@ def compare_pair(model1, model2, max_units=512, max_v=64):
         null = greedy_match_cosine(
             normed(torch.randn_like(X)), normed(torch.randn_like(Y)))
         rec = {"layer": li, "matched_cos": mc, "null_cos": null}
+        # gate-only control (same object across all archs)
+        G1s = G1[torch.randperm(G1.shape[0])[:max_units]] \
+            if G1.shape[0] > max_units else G1
+        rec["gate_matched_cos"] = greedy_match_cosine(G1s, G2)
+        rec["gate_null_cos"] = greedy_match_cosine(
+            normed(torch.randn_like(G1s)), normed(torch.randn_like(G2)))
+        # gauge-invariant per-route interaction-matrix recurrence
+        Vf1 = per_route_V_all(f1)
+        Vf2 = per_route_V_all(f2)
+        rec["v_matched_cos"] = greedy_match_cosine(Vf1, Vf2)
+        rec["v_null_cos"] = greedy_match_cosine(
+            normed(torch.randn_like(Vf1)), normed(torch.randn_like(Vf2)))
         V1, L = per_gate_V(f1)
         if V1 is not None:
             V2, _ = per_gate_V(f2)
@@ -155,6 +191,14 @@ def main():
         mean_null = float(np.mean([r["null_cos"] for r in layers]))
         rec = {"arch": c1["arch"], "seeds": [c1["seed"], c2["seed"]],
                "mean_matched_cos": mean_mc, "mean_null_cos": mean_null,
+               "mean_gate_cos": float(np.mean([r["gate_matched_cos"]
+                                               for r in layers])),
+               "mean_gate_null": float(np.mean([r["gate_null_cos"]
+                                                for r in layers])),
+               "mean_v_cos": float(np.mean([r["v_matched_cos"]
+                                            for r in layers])),
+               "mean_v_null": float(np.mean([r["v_null_cos"]
+                                             for r in layers])),
                "layers": layers}
         if "v_subspace_overlap" in layers[0]:
             rec["mean_v_overlap"] = float(
@@ -163,7 +207,9 @@ def main():
                 np.mean([r["v_subspace_null"] for r in layers]))
         results.append(rec)
         log("result", f"{c1['arch']} seeds {c1['seed']}vs{c2['seed']}: "
-            f"matched_cos={mean_mc:.4f} (null {mean_null:.4f})"
+            f"matched_cos={mean_mc:.4f} (null {mean_null:.4f}) "
+            f"gate_cos={rec['mean_gate_cos']:.4f} (null {rec['mean_gate_null']:.4f}) "
+            f"V_cos={rec['mean_v_cos']:.4f} (null {rec['mean_v_null']:.4f})"
             + (f" V_overlap={rec.get('mean_v_overlap'):.4f} "
                f"(null {rec.get('mean_v_null'):.4f})"
                if "mean_v_overlap" in rec else ""))

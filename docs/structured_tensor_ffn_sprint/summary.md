@@ -147,7 +147,41 @@ expressivity-as-superset never materializes. Caveat: this is the compression reg
 (students 4.6–18.4% of teacher size); it measures the structure of the teacher's
 function, not end-to-end trainability.
 
-### 8.4 Interpretability proxies (exp19/exp22) — [PENDING]
+### 8.4 Interpretability proxies (exp19/exp22)
+
+**Per-route rank converges to ≈4 regardless of parameterization.** The trained dense
+Tucker LMs have per-gate stable rank 3.97/3.99 (mean over gates and layers, seeds 0/1;
+max 5.3) — replicating the prior draft's ρ̄≈3.97 on fresh seeds — despite being free to
+use rank 128. LL1 capped at L=4 saturates its cap (realized stable rank 3.26±0.01).
+Together with the distillation knee at L≈4–8 (§8.3), three independent measurements
+point to a natural per-route interaction rank of ~4 for LM FFN computation at this
+scale.
+
+**Routing is not sparse for any architecture.** Effective active routed units per token
+(exp-entropy of contribution distribution, mean over layers/seeds): SwiGLU 733/1493
+(49%), LL1 312/498 (63%), Tucker 82/128 (64%). SwiGLU is the most selective *relative
+to capacity*; Tucker the most diffuse; in absolute object count the ordering reverses
+(82 < 312 < 733). Top-k decomposability tells the same story from the loss side: to
+stay within ~0.03 nats of base loss, SwiGLU needs ~512 of 1493 atoms per token (34%),
+LL1 ~256 of 498 blocks (51%), Tucker ~128 of 128 gates (100%).
+
+**Single-unit ablations are uniformly negligible** (max Δloss 0.0003–0.0016 nats at
+layer 3 over top+random units): at 52.5M params no single atom/block/gate is
+load-bearing; effects scale with unit size (Tucker's 128-gate units have ~10× the
+median effect of SwiGLU's atoms), not with structure.
+
+**Factor stability across seeds is weak everywhere, and only SwiGLU clears chance.**
+Cross-seed greedy matching: SwiGLU joint atoms [w;g;u] match at cosine 0.268 vs null
+0.089 (3.0×); gate directions alone are at chance for ALL architectures (swiglu 0.154
+vs null 0.155; ll1 0.135 vs 0.134; tucker 0.116 vs 0.115); gauge-invariant per-route
+interaction matrices vec(V): swiglu 0.0100 vs null 0.0060 (1.7×), ll1 0.0065 vs null
+0.0079 (at chance). LL1's theoretical identifiability advantages do not translate
+into cross-seed recurrence of learned blocks at this scale — an honest negative for
+the "structured ⇒ stable factors" hypothesis.
+
+Tucker core diagnostics: 26.8% of core energy remains on the superdiagonal (warm-start
+legacy), effective entry fraction 8% — the core is neither dense-uniform nor
+block-structured.
 
 ### 8.5 Induction pilot (exp20/exp20b)
 

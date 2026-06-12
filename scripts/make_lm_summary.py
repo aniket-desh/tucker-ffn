@@ -33,7 +33,7 @@ print(f"{'arch':12s} {'seeds':14s} {'final val loss':>22s} {'ppl':>8s}")
 table = {}
 for arch, seeds in sorted(runs.items()):
     finals = {s: ll[-1]["val_loss"] for s, ll in seeds.items()
-              if ll[-1]["tokens"] >= 0.99 * max(e["tokens"] for e in ll)}
+              if ll[-1]["tokens"] >= 99_000_000}
     finals_done = {s: v for s, v in finals.items()}
     vals = np.array(list(finals_done.values()))
     if len(vals) == 0:
@@ -54,10 +54,10 @@ for arch, (m, s, n, _) in table.items():
 order = np.argsort(Ls)
 Ls = np.array(Ls)[order]; means = np.array(means)[order]; stds = np.array(stds)[order]
 if len(Ls):
-    ax.errorbar(Ls, means, yerr=stds, fmt="o-", color=PALETTE["primary"],
+    ax.errorbar(Ls, means, yerr=stds, fmt="o-", color="#31a354",
                 label="LL1 (L sweep)", capsize=3)
-for arch, color, label in [("swiglu", PALETTE["ablation"], "SwiGLU"),
-                           ("tucker", PALETTE["accent"], "dense Tucker")]:
+for arch, color, label in [("swiglu", "#2c7fb8", "SwiGLU"),
+                           ("tucker", "#d7301f", "dense Tucker")]:
     if arch in table:
         m, s, n, _ = table[arch]
         ax.axhline(m, color=color, ls="--", label=f"{label} ({n} seeds)")
@@ -77,9 +77,9 @@ print("saved", out)
 
 # ── curves figure ───────────────────────────────────────────────────────────
 fig, ax = plt.subplots(figsize=(6.2, 4.0))
-style = {"swiglu": (PALETTE["ablation"], "SwiGLU"),
-         "ll1_l4": (PALETTE["primary"], "LL1 (L=4)"),
-         "tucker": (PALETTE["accent"], "dense Tucker")}
+style = {"swiglu": ("#2c7fb8", "SwiGLU"),
+         "ll1_l4": ("#31a354", "LL1 (L=4)"),
+         "tucker": ("#d7301f", "dense Tucker")}
 for arch, (color, label) in style.items():
     if arch not in runs:
         continue

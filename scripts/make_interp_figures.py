@@ -25,9 +25,9 @@ os.makedirs(args.out_dir, exist_ok=True)
 setup_plot_style()
 
 ARCH_STYLE = {
-    "swiglu": (PALETTE["ablation"], "SwiGLU (1493 atoms)"),
-    "ll1_l4": (PALETTE["primary"], "LL1 L=4 (498 blocks)"),
-    "tucker": (PALETTE["accent"], "Tucker (128 gates)"),
+    "swiglu": ("#2c7fb8", "SwiGLU (1493 atoms)"),
+    "ll1_l4": ("#31a354", "LL1 L=4 (498 blocks)"),
+    "tucker": ("#d7301f", "Tucker (128 gates)"),
 }
 def arch_key(a):
     return a if a in ARCH_STYLE else None
