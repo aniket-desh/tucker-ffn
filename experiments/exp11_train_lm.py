@@ -47,6 +47,8 @@ from lib.lm import (  # noqa: E402
     matched_swiglu_for_tucker,
     make_lm,
 )
+from lib.ll1_ffn import ll1_blocks_for_params, ll1_params  # noqa: E402
+from lib.tucker_ffn import swiglu_params  # noqa: E402
 
 
 def cosine_lr(step, max_steps, peak_lr, warmup, min_lr_frac=0.1):
@@ -160,6 +162,17 @@ def train_one(arch, seed, args, device, val_inp, val_tgt, tokenizer,
                          n_layers=args.n_layers, vocab_size=args.vocab_size,
                          max_seq_len=args.seq_len, r=args.tucker_r,
                          s=args.tucker_s, diagonal_only=True)
+    elif arch.startswith("ll1_l"):
+        # arch tag "ll1_l{L}": block rank L, n_blocks matched to the swiglu
+        # ffn parameter budget 3*d*swiglu_m.
+        L = int(arch[len("ll1_l"):])
+        target = swiglu_params(args.d, args.swiglu_m)
+        B = ll1_blocks_for_params(args.d, L, target)
+        log("info", f"ll1 arch: L={L} B={B} atoms={B*L} "
+            f"params/layer={ll1_params(args.d, B, L)} (target {target})")
+        model = make_lm("ll1", d=args.d, n_heads=args.n_heads,
+                         n_layers=args.n_layers, vocab_size=args.vocab_size,
+                         max_seq_len=args.seq_len, n_blocks=B, block_rank=L)
     else:
         raise ValueError(arch)
 
@@ -294,8 +307,15 @@ def plot_loss_curves(results_dir, archs, seeds):
         "tucker": (PALETTE["ablation"], "s", "Tucker (matched params)"),
         "tucker_diag": (PALETTE["accent"], "^", "Tucker (diagonal-only)"),
     }
-    for arch in archs:
-        color, marker, label = style[arch]
+    extra_markers = ["v", "D", "P", "X", "*", "<", ">"]
+    for ai, arch in enumerate(archs):
+        if arch in style:
+            color, marker, label = style[arch]
+        else:
+            color = COLOR_CYCLE[ai % len(COLOR_CYCLE)]
+            marker = extra_markers[ai % len(extra_markers)]
+            label = arch.replace("ll1_l", "LL1 (L=") + ")" \
+                if arch.startswith("ll1_l") else arch
         all_curves = []
         tokens_axis = None
         for seed in seeds:

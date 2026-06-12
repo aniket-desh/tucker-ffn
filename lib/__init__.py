@@ -31,6 +31,7 @@ from .routing import (
     channel_subset_ablation,
     interpolated_routing,
 )
+from .ll1_ffn import LL1FFN, ll1_blocks_for_params, ll1_params
 from .runner import add_common_args, prepare_run
 from .tucker_ffn import (
     SwiGLUFFN,
@@ -46,6 +47,7 @@ __all__ = [
     "ChannelSubsetRouting",
     "ConstantRouting",
     "InterpolatedRouting",
+    "LL1FFN",
     "LAYER_CMAP",
     "LS_CYCLE",
     "MARKER_CYCLE",
@@ -64,6 +66,8 @@ __all__ = [
     "get_swiglu_layers",
     "get_weight_and_bias",
     "interpolated_routing",
+    "ll1_blocks_for_params",
+    "ll1_params",
     "load_model_and_tokenizer",
     "load_text_data",
     "log",

@@ -19,6 +19,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .ll1_ffn import LL1FFN
 from .tucker_ffn import SwiGLUFFN, TuckerFFN
 
 
@@ -83,7 +84,7 @@ class CausalAttention(nn.Module):
 
 @dataclass
 class FFNConfig:
-    kind: str = "swiglu"   # "swiglu" or "tucker"
+    kind: str = "swiglu"   # "swiglu", "tucker", or "ll1"
     m: int = None          # for swiglu
     r: int = None          # for tucker
     s: int = None          # for tucker (defaults to r)
@@ -91,12 +92,18 @@ class FFNConfig:
     diagonal_bias_init: bool = False  # init tucker C with superdiagonal bias
     diag_bias_eps: float = 1e-2       # off-diag noise std multiplier (eps/r)
     legacy_init: bool = False         # reproduce older (incorrect) init scaling
+    n_blocks: int = None   # for ll1
+    block_rank: int = None # for ll1
 
 
 def build_ffn(d, cfg):
     if cfg.kind == "swiglu":
         assert cfg.m is not None
         return SwiGLUFFN(d, cfg.m, bias=False)
+    if cfg.kind == "ll1":
+        assert cfg.n_blocks is not None and cfg.block_rank is not None
+        return LL1FFN(d, n_blocks=cfg.n_blocks, block_rank=cfg.block_rank,
+                      bias=False)
     if cfg.kind == "tucker":
         assert cfg.r is not None
         s = cfg.s if cfg.s is not None else cfg.r
@@ -202,10 +209,13 @@ def matched_swiglu_for_tucker(d, r, s):
 def make_lm(kind, d, n_heads, n_layers, vocab_size, max_seq_len,
             m=None, r=None, s=None, diagonal_only=False,
             diagonal_bias_init=False, diag_bias_eps=1e-2,
-            legacy_init=False, tied=True):
-    """convenience factory. kind in {"swiglu","tucker"}."""
+            legacy_init=False, tied=True,
+            n_blocks=None, block_rank=None):
+    """convenience factory. kind in {"swiglu","tucker","ll1"}."""
     if kind == "swiglu":
         ffn = FFNConfig(kind="swiglu", m=m)
+    elif kind == "ll1":
+        ffn = FFNConfig(kind="ll1", n_blocks=n_blocks, block_rank=block_rank)
     elif kind == "tucker":
         ffn = FFNConfig(kind="tucker", r=r, s=s,
                           diagonal_only=diagonal_only,
