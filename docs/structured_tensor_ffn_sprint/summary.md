@@ -102,14 +102,15 @@ real LM computation.
 52.5M-param LMs, 100M FineWeb-Edu tokens, matched FFN budgets, identical
 hyperparameters (3 seeds each; tucker seed 2 rerunning after a scheduling restart):
 
-| arch | final val loss (mean ± std) | ppl | train tok/s (A40, idle) |
+| arch | final val loss (mean ± std, n=3) | ppl | train tok/s (A40, idle) |
 |---|---|---|---|
 | LL1 (L=4, B=498) | **4.7472 ± 0.0041** | 115.3 | 75,251 |
 | SwiGLU (m=1493) | 4.7542 ± 0.0104 | 116.1 | 71,373 |
-| Tucker (r=s=128, diag-init) | 4.7578 ± 0.0024 (n=2) | 116.5 | 36,545 |
+| Tucker (r=s=128, diag-init) | 4.7623 ± 0.0072 | 117.0 | 36,545 |
 
-Welch t for LL1 vs SwiGLU ≈ 1.1 — **a statistical tie**; we do not claim an LL1 loss
-win. What is *not* a tie: throughput. At matched parameters and matched FLOPs
+Welch t: LL1 vs SwiGLU ≈ 1.1 — **a statistical tie**; we do not claim an LL1 loss win.
+LL1 vs Tucker ≈ 3.1 — LL1 is ahead of dense Tucker beyond seed noise. What is
+decisively not a tie: throughput. At matched parameters and matched FLOPs
 (4.59e6 MACs/token/layer ±0.2%), LL1 trains 5–7% faster than SwiGLU (smaller gate
 GEMM) and 2.06× faster than Tucker, whose core contraction is GEMM-unfriendly.
 SwiGLU seed0 reproduces the prior draft's result (4.763 vs 4.758). L-sweep at

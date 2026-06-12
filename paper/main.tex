@@ -38,25 +38,117 @@ University of Illinois Urbana-Champaign\\
 \maketitle
 
 \begin{abstract}
-% TO FILL after results. Template (one claim per sentence):
-% 1. obstacle: FFNs hold most params; multiplicative interactions hard to interpret.
-% 2. exact observation: SwiGLU admits an exact routed CP decomposition.
-% 3. the tension: superdiagonal core = atomized but one route per rank-1 atom.
-% 4. proposal: LL1/block-CP family, per-route rank L as the dial.
-% 5. experiments + main result.
-% 6. careful implication.
-[Abstract placeholder.]
+Transformer feedforward networks hold most of a language model's parameters, but
+their multiplicative interactions lack the structural vocabulary that makes attention
+analyzable. We start from an exact observation: a SwiGLU block is a \emph{routed CP
+tensor model} --- each hidden channel contributes a fixed rank-one interaction atom
+$u_j \otimes w_j \otimes g_j$, routed by an input-dependent sigmoid coefficient. The
+superdiagonal latent core this implies is both what atomizes the layer and what
+restricts every route to a single rank-one interaction. Rather than replacing it with
+an arbitrary dense Tucker core, we study the family that interpolates between the
+two: LL1 (block-term) feedforward networks, in which one gate routes a rank-$L$ block
+of interactions, so that the per-route rank --- exactly the quantity priced by an
+aligned-width separation theorem --- becomes a hyperparameter, and, at fixed
+parameters, routing diversity is traded for interaction atoms. In controlled
+teacher--student recovery, routes and per-route rank are independently binding:
+students recover a routed tensor map to machine precision exactly when both suffice,
+and the nominally most expressive dense core loses every matched-budget comparison.
+On real pretrained FFN layers (Qwen2.5-0.5B), LL1 students with $L\approx4$--$8$
+compress the layer's function better than rank-one atoms in every layer and budget
+tested, and far better than a dense core. Trained from scratch at matched parameters
+and FLOPs (52.5M parameters, 100M tokens, 3 seeds), SwiGLU, LL1($L{=}4$), and dense
+Tucker tie on validation loss --- while LL1 trains 5--7\% faster than SwiGLU and
+$2.1\times$ faster than Tucker, and an unconstrained Tucker core spontaneously learns
+per-route stable rank $\approx 4$, the same value at which LL1's blocks saturate and
+the distillation optimum sits. Interpretability proxies are a deliberate negative:
+no architecture routes sparsely, and LL1's learned blocks recur across seeds no
+better than chance. Our results suggest that the right amount of tensor structure in
+a transformer FFN is a measurable quantity --- about rank four per route at this
+scale --- and that structured block-CP parameterizations deliver it at zero loss cost,
+but that architectural structure alone does not purchase mechanistic
+interpretability.
 \end{abstract}
 
 \section{Introduction}
-% P1: FFNs as the underinterpreted part of transformers.
-% P2: exact tensor view of SwiGLU (words first).
-% P3: CP's benefit and cost.
-% P4: dense Tucker is the wrong naive move (honest revision).
-% P5: LL1/block-CP structured relaxation; the gate-vs-atom budget trade.
-% P6: empirical program.
-% P7: contributions (numbered, true).
-[Introduction placeholder.]
+
+Attention has accumulated a rich structural vocabulary --- heads, QK/OV circuits,
+induction patterns \citep{elhage2021mathematical,olsson2022context} --- that makes it
+the best-understood component of transformers. The feedforward network, which holds
+the majority of parameters in modern architectures
+\citep{vaswani2017attention,shazeer2020glu}, has no comparable account: its
+multiplicative gating creates feature interactions that are hard to trace through
+weights, and most interpretability progress on MLPs has come from analyzing
+activations rather than the architecture itself
+\citep{bricken2023monosemanticity,dunefsky2024transcoders}.
+
+The starting point of this paper is that for SwiGLU --- the dominant FFN variant ---
+an exact architectural account already exists, hidden in plain sight. Because
+$\silu(z) = z\,\sigma(z)$, each SwiGLU channel is a rank-one bilinear interaction
+between two learned directions, scaled by a sigmoid gate: the layer is, exactly and
+pointwise in its input, a CP decomposition of a third-order interaction tensor with
+fixed factors and input-dependent routing weights (\S\ref{sec:routedcp}). Each hidden
+index contributes one \emph{atom} (what interaction is available) and one
+\emph{route} (when it is used). This is the gated counterpart of the bilinear-MLP
+observation of \citet{pearce2025bilinear}, who showed that GLUs \emph{without} the
+element-wise nonlinearity are third-order tensors amenable to weight-based analysis.
+
+The CP structure cuts both ways. Read as a Tucker decomposition, SwiGLU's latent core
+is superdiagonal: the $j$-th main feature interacts only with the $j$-th gate. This
+restriction is what makes the decomposition atomized and essentially unique
+\citep{kruskal1977three} --- ``CPD gives a sparse core for free'' --- but it also
+means one route controls exactly one rank-one interaction. An earlier draft of this
+project proposed the obvious mathematical relaxation, a dense learned core (a
+Tucker-FFN), and proved a separation theorem: simulating a Tucker block with aligned
+SwiGLU units costs $\sum_j \rank V_j$ units, where $V_j$ is the interaction matrix
+routed by gate $j$ --- generically $k^2$ versus $O(k)$ latent dimensions. We now
+believe the dense core is the wrong conclusion to draw from that theorem. A dense
+core is gauge-non-identifiable (its latent directions carry no intrinsic meaning),
+concentrates $\sim$90\% of the block's parameters in interactions, and --- as our
+experiments show --- is dominated in practice. The right reading of the theorem is
+that \emph{the per-route rank $\rank V_j$ is the priced quantity}, and the
+constructive half of its proof is itself an architecture: realize each $V_j$ as $L$
+rank-one atoms sharing one gate.
+
+That architecture is the LL1 (multilinear rank-$(L,L,1)$ block-term) decomposition
+\citep{delathauwer2008blockterm} applied to the FFN's interaction tensor, with the
+gate mode as the rank-one mode (\S\ref{sec:ll1}). It nests SwiGLU exactly at $L{=}1$
+and block-sparse Tucker in general, and it makes the comparison crisp at a fixed
+parameter budget: an LL1 block buys $\tfrac{3L}{2L+1}\times$ more interaction atoms
+than SwiGLU at the price of $\tfrac{3}{2L+1}\times$ fewer independent routes.
+\emph{How much rank should a route control?} becomes an empirical question with a
+dial.
+
+We answer it with four experiments at strictly matched parameters and FLOPs:
+synthetic teacher--student recovery where the true structure is known
+(\S\ref{sec:synthetic}); compression of real pretrained FFN layers
+(\S\ref{sec:distill}); from-scratch language-model training (\S\ref{sec:lm}) with
+measured throughput; and interpretability proxies plus an induction-circuit pilot
+(\S\ref{sec:interp}--\ref{sec:induction}).
+
+Our contributions:
+\begin{enumerate}
+\item \textbf{Framing (exact):} SwiGLU as a routed CP tensor field; the LL1 FFN as
+  the rank-controlled family between routed CP and dense Tucker, nesting both; the
+  route/atom budget identity; and the aligned-width theorem re-read as pricing
+  per-route rank (Appendix~\ref{app:theorem}).
+\item \textbf{Recovery (synthetic):} at fixed budget, routes and per-route rank bind
+  independently --- error is minimized exactly at the teacher's block rank, with
+  machine-precision recovery if and only if structure matches, and the dense core
+  loses every cross-class comparison.
+\item \textbf{Real FFN maps:} distilling Qwen2.5-0.5B layers, LL1 with
+  $L\approx4$--$8$ beats rank-one atoms in all nine layer$\times$budget cells
+  ($\sim$30$\times$ seed noise) and the dense core loses by 35--130\%.
+\item \textbf{End-to-end:} at 52.5M parameters / 100M tokens (3 seeds), LL1($L{=}4$),
+  SwiGLU, and Tucker tie on loss; LL1 is 5--7\% faster than SwiGLU and $2.1\times$
+  faster than Tucker; and the unconstrained Tucker core spontaneously learns
+  per-route stable rank $\approx 4$ --- the value LL1 hard-codes.
+\item \textbf{Interpretability (negative):} measured proxies — routing diffuseness,
+  top-$k$ decomposability, ablation locality, cross-seed factor recurrence — do not
+  support the hypothesis that block structure improves mechanistic accessibility;
+  LL1's blocks recur across seeds at chance. The induction pilot shows no effect of
+  FFN structure on circuit emergence, with a single-seed observation of an
+  alternative dense-core copying circuit.
+\end{enumerate}
 
 \section{The routed tensor view of gated FFNs}
 \label{sec:theory}
@@ -205,27 +297,284 @@ identifiable parameterization.
 
 \section{Experiments}
 \label{sec:experiments}
-% Each subsection: Question / Setup / Metric / Result / Interpretation / Caveat.
 
-\subsection{Synthetic teacher--student recovery}
+All architectures are compared at matched parameter and FLOP budgets
+(Table~\ref{tab:configs}; budgets match to $\pm 0.2\%$), with identical optimizers,
+schedules, and data. Code, configurations, and per-seed results accompany the paper;
+full hyperparameters are in Appendix~\ref{app:details}.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule
+architecture & config & routes & per-route rank & atoms ($\sum_j \rank V_j$) & FFN params/layer \\
+\midrule
+SwiGLU & $m{=}1493$ & 1493 & 1 & 1493 & 2{,}293{,}248 \\
+LL1 $L{=}2$ & $B{=}896$ & 896 & 2 & 1792 & 2{,}293{,}760 \\
+LL1 $L{=}4$ & $B{=}498$ & 498 & 4 & 1992 & 2{,}294{,}784 \\
+LL1 $L{=}8$ & $B{=}263$ & 263 & 8 & 2104 & 2{,}289{,}152 \\
+LL1 $L{=}16$ & $B{=}136$ & 136 & 16 & 2176 & 2{,}297{,}856 \\
+dense Tucker & $r{=}s{=}128$ & 128 & 128 & 16384$^*$ & 2{,}293{,}760 \\
+\bottomrule
+\end{tabular}
+\caption{Matched-budget configurations at $d=512$ (the LM setting of
+\S\ref{sec:lm}). LL1 converts routing diversity into interaction atoms at fixed
+budget. $^*$Tucker's atom count is the aligned-SwiGLU width its generic core would
+require (Theorem~\ref{thm:bottleneck}); its parameters are concentrated in the core
+($sr^2 = 2.10$M of $2.29$M).}
+\label{tab:configs}
+\end{table}
+
+\subsection{Synthetic teacher--student recovery: structure must match, in both directions}
 \label{sec:synthetic}
-[exp18 placeholder]
 
-\subsection{Matched-budget language modeling}
+\textbf{Question.} Is per-route rank a real capacity dial — does a student recover a
+routed tensor map if and only if its routes and per-route ranks suffice?
+
+\textbf{Setup.} Teachers at $d=64$ with unit-variance outputs: a CP teacher (32
+rank-one routed atoms), an LL1 teacher ($B^*{=}16$ blocks of rank $L^*{=}4$, i.e.\ 64
+atoms on 16 routes), and a dense Tucker teacher ($r{=}s{=}16$, generic full-rank
+slices). Students of every family are trained on Gaussian inputs by MSE at a fixed
+9{,}216-parameter budget, 3 seeds; we report validation MSE relative to output
+variance (best of 3, capacity reading; bands span seeds).
+
+\textbf{Result.} Figure~\ref{fig:synthetic} (left to right): on the CP teacher,
+$L{=}1$ students recover it (rel.\ MSE $\sim 10^{-4}$) and error rises monotonically
+with $L$ (gate-tying starves routes: an $L{=}16$ student has only $B{=}4$ routes for a
+32-route teacher). On the LL1 teacher the error minimum sits exactly at $L=L^*=4$
+(machine precision, $2\times10^{-13}$, 2/3 seeds), with failure on both sides:
+$L{<}4$ students lack atoms ($48, 58 < 64 = \sum_b \rank V_b$), the $L{=}8$ student
+lacks routes ($8 < 16$). On the Tucker teacher only the Tucker student succeeds
+($1.1\times10^{-10}$); every CP/LL1 student plateaus at rel.\ MSE $\ge 0.2$.
+
+\textbf{Interpretation.} Routes and per-route rank are \emph{independently binding}
+resources at fixed budget, exactly as the counting argument predicts, and each family
+attains machine-precision recovery of its own class --- the representations are
+optimization-reachable, not just existence proofs. Expressivity-as-superset does not
+survive a parameter budget: the Tucker student, which contains all other classes,
+loses on every non-Tucker teacher because its core consumes the budget that
+CP/LL1 students spend on routes.
+
+\textbf{Caveat.} Gaussian inputs, structure-matched teachers, $d=64$. This experiment
+calibrates the dial; it says nothing about which structure real data prefers.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/exp18_lsweep.png}
+\caption{Synthetic teacher--student recovery at a fixed 9{,}216-parameter student
+budget ($d{=}64$; 3 seeds; line = best seed, band = seed range; log--log). Left: a CP
+teacher (32 routes) is recovered by rank-one students and degrades monotonically with
+student block rank $L$ as gate-tying starves routes. Middle: an LL1 teacher
+($16$ blocks, $L^*{=}4$) is recovered to machine precision exactly at $L{=}4$
+(dash-dot vertical line) and fails in both directions --- too few atoms below, too
+few routes above. Right: a generic dense-Tucker teacher is recovered only by the
+Tucker student (red dotted line at $10^{-10}$). Matched structure wins everywhere.}
+\label{fig:synthetic}
+\end{figure}
+
+\subsection{Compressing real FFN maps: pretrained layers prefer small $L > 1$}
+\label{sec:distill}
+
+\textbf{Question.} Which tensor structure best describes the input--output function a
+\emph{real, pretrained} SwiGLU FFN computes?
+
+\textbf{Setup.} We capture FFN inputs and outputs for layers $\{4, 12, 20\}$ of
+Qwen2.5-0.5B ($d{=}896$, $m{=}4864$; 13.07M parameters per FFN) on $\approx$120K
+tokens of FineWeb-Edu, and fit students of every family at compression budgets
+$\{0.6, 1.2, 2.4\}$M parameters ($4.6$--$18.4\%$ of the teacher) by MSE. 2 seeds; the
+seed spread is $\pm 0.001$ rel.\ MSE throughout, so all reported gaps are
+$\gtrsim 30\times$ noise.
+
+\textbf{Result.} The ordering
+$\text{LL1}(L{\approx}4\text{--}16) < \text{LL1}(2) < \text{CP} \ll \text{dense
+Tucker}$ holds in all nine (layer, budget) cells (Figure~\ref{fig:distill}). LL1's
+gain over CP is modest but systematic (2--4\% rel.\ MSE; e.g.\ layer 12 at 2.4M:
+$0.348$ vs $0.361$), with a shallow optimum at $L \approx 4$--$8$. The $L{=}1$
+control matches SwiGLU to $\pm 0.001$ in every cell. Dense Tucker is worse by
+35--130\% rel.\ MSE and does not improve --- on layer 20 it \emph{worsens} --- with
+budget.
+
+\textbf{Interpretation.} The function computed by a trained SwiGLU layer contains
+cross-atom structure that rank-one routed atoms capture inefficiently: at matched
+budget, spending parameters on rank-4--8 routed blocks (and accepting
+$3{-}10\times$ fewer routes) is consistently the better trade. The dense core is the
+wrong basis for this function class at compression budgets.
+
+\textbf{Caveat.} This is the compression regime; it measures the structure of the
+teacher's function, not end-to-end trainability (next subsection). One model family
+(Qwen2.5) and one dataset.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/exp21_distill.png}
+\caption{Distilling pretrained Qwen2.5-0.5B FFN layers into matched-budget students
+(relative validation MSE at the 1.2M-parameter budget; 2 seeds, spread $\pm0.001$;
+log--log). In every layer the LL1 student improves on the SwiGLU/CP student
+(dashed blue) with a shallow optimum at block rank $L\approx4$--$16$, and the dense
+Tucker student (dotted red) is far worse. Real FFN maps contain routed low-rank block
+structure.}
+\label{fig:distill}
+\end{figure}
+
+\subsection{Matched-budget language modeling: a three-way tie on loss; a $2\times$ split on speed}
 \label{sec:lm}
-[exp11/sprint\_lm placeholder]
 
-\subsection{Interpretability proxies}
+\textbf{Question.} Do these representational differences survive end-to-end training
+on language?
+
+\textbf{Setup.} LLaMA-style decoders (52.5M parameters, $d{=}512$, 8 layers) trained
+from scratch on 100M FineWeb-Edu tokens with identical hyperparameters, differing
+only in FFN (Table~\ref{tab:configs}); 3 seeds for SwiGLU, LL1($L{=}4$), and Tucker;
+1 seed for the remaining $L$ values. Tucker uses its best-known (diagonal warm-start)
+initialization. Throughput is measured separately on an idle A40.
+
+\textbf{Result.} Final validation loss: LL1($L{=}4$) $4.7472 \pm 0.0041$, SwiGLU
+$4.7542 \pm 0.0104$, Tucker $4.7623 \pm 0.0072$ (mean $\pm$ std over 3 seeds). LL1
+vs.\ SwiGLU is a statistical tie (Welch $t \approx 1.1$); LL1 vs.\ Tucker separates
+(t $\approx 3.1$). [L-SWEEP NUMBERS]. Training throughput at matched FLOPs
+($4.59{\times}10^6$ MACs/token/layer for every architecture): LL1 75.3K tokens/s,
+SwiGLU 71.4K, Tucker 36.5K --- LL1 is $5$--$7\%$ faster than SwiGLU (its gate GEMM is
+$2L{+}1$ smaller) and $2.06\times$ faster than Tucker, whose core contraction is
+GEMM-unfriendly.
+
+\textbf{Interpretation.} At this scale the route/atom trade is loss-neutral on
+language modeling: tripling per-route rank while tripling down on routes neither
+helps nor hurts. The differences that survive are operational: LL1 buys a throughput
+edge and a structurally bounded per-route rank at zero loss cost, while the dense
+core costs $2\times$ wall-clock for nominally identical FLOPs and slightly worse
+loss.
+
+\textbf{Caveat.} 52.5M parameters, 100M tokens, one dataset, hyperparameters
+inherited from SwiGLU tuning; the $L$-sweep is single-seed away from $L{=}4$.
+
+\subsection{Interpretability proxies: the computation has rank $\approx 4$ per route, and no architecture routes sparsely}
 \label{sec:interp}
-[exp19/exp22 placeholder]
 
-\subsection{Circuit-level pilot: induction}
+\textbf{Question.} What does block rank buy or cost in measurable structure?
+
+\textbf{Setup.} On the trained LMs: per-token unit contributions and their
+exp-entropy (``effective active units''), all-layer top-$k$ decomposition curves,
+single-unit ablations, weight-based per-gate stable ranks, and cross-seed factor
+matching with shuffled-weight nulls (Appendix~\ref{app:details}).
+
+\textbf{Result.} (i) The trained dense Tucker models use per-gate stable rank
+$3.97/3.99/[\,\cdot\,]$ (seeds; max 5.3) of an available 128; LL1 capped at $L{=}4$
+saturates to 3.26. With the distillation knee at $L \approx 4$--$8$, three
+independent measurements give the same answer: \emph{the natural per-route rank of
+FFN computation at this scale is $\approx 4$}. (ii) No architecture routes sparsely:
+effective active units per token are 49\% of capacity for SwiGLU (733/1493), 63\% for
+LL1 (312/498), 64\% for Tucker (82/128); to stay within 0.03 nats of base loss,
+SwiGLU needs $\sim$34\% of its atoms per token, LL1 $\sim$51\% of blocks, Tucker
+$\sim$100\% of gates (Figure~\ref{fig:interp}). (iii) Single-unit ablations are
+negligible for all (max $\Delta$loss $\le 0.0016$ nats). (iv) Cross-seed recurrence:
+SwiGLU's joint atoms match across seeds at $3.0\times$ the shuffled null (cosine
+0.268 vs.\ 0.089); gauge-invariant per-route matrices recur weakly for SwiGLU
+($1.7\times$ null) and Tucker ($1.6\times$) but are \emph{at chance for LL1}; gate
+directions are at chance for every architecture.
+
+\textbf{Interpretation.} The rank-4 convergence is the cleanest structural fact this
+sprint produced, and it argues for LL1 as the \emph{honest parameterization}: it
+hard-codes the rank the unconstrained model learns anyway, at lower cost. But the
+interpretability proxies do not support the hypothesis that this buys mechanistic
+legibility: routing stays diffuse, blocks are individually dispensable, and LL1's
+learned blocks recur across seeds no better than chance --- the block partition
+apparently adds assignment freedom that atom-level CP does not have.
+
+\textbf{Caveat.} Proxies measure routing statistics and weight structure, not
+semantic legibility; no human or automated interpretation of atoms/blocks was
+attempted.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/interp_topk.pdf}
+\caption{Top-$k$ decomposability of the trained LMs: excess validation loss when
+every layer's FFN output is replaced by its $k$ largest-contribution routed units per
+token (left: absolute $k$; right: fraction of available units; mean over 3 seeds for
+SwiGLU/LL1, 2--3 for Tucker; log--log). SwiGLU is the most truncatable relative to
+capacity, Tucker the least; LL1 sits between, with $3\times$ fewer (larger) objects
+than SwiGLU at equal excess loss.}
+\label{fig:interp}
+\end{figure}
+
+\subsection{Circuit pilot: induction emerges identically; one dense-core seed finds another circuit}
 \label{sec:induction}
-[exp20 placeholder]
+
+\textbf{Question.} Does FFN tensor structure change the emergence or mechanism of a
+known attention circuit?
+
+\textbf{Setup.} Repeated-sequence induction task ($[s;s]$, fresh random $s$ each
+sample, vocab 128, $|s|{=}64$); 2-layer transformers ($d{=}128$) identical except
+the FFN (matched 131K-parameter budgets; attention-only control); 3 seeds; we track
+second-half accuracy, the canonical induction score (attention mass at offset
+$|s|{-}1$), attention-offset profiles, and head/FFN ablations.
+
+\textbf{Result.} Emergence is architecture-independent: every FFN variant reaches
+$100\%$ accuracy in 140--180 steps (attention-only: 80). All SwiGLU/LL1 runs and 2/3
+Tucker runs converge to textbook induction attention (offset-$63$ mass
+$0.93$--$1.00$). One Tucker seed reaches $100\%$ accuracy with \emph{no} canonical
+induction head: its layer-2 heads attend at diffuse offsets (mass $\le 0.19$ spread
+over offsets 37--56), ablating its best head changes nothing, and its solution runs
+through the FFN. A methodological caution: zeroing all FFNs collapses \emph{every}
+architecture (including SwiGLU, to 13\%), so FFN-bypass is not a valid
+circuit-attribution test for jointly trained models; the offset profiles are the
+discriminating measurement.
+
+\textbf{Interpretation.} A negative result for the hypothesis that FFN tensor
+structure modulates circuit emergence at this scale, plus a single-seed existence
+proof that the dense-core FFN admits a qualitatively different copying
+implementation. We report the latter as an observation ($n{=}1$ of 3 seeds), not a
+claim about frequency.
+
+\textbf{Caveat.} Tiny models, one task, three seeds; the alternative-circuit
+observation needs a basin-frequency study.
 
 \section{Discussion}
 \label{sec:discussion}
-[placeholder: what is established / plausible / open; limitations; next experiment.]
+
+\paragraph{What is established.}
+Per-route interaction rank is a real capacity dial: at fixed parameters it binds in
+both directions in controlled recovery, and three independent measurements --- the
+learned stable rank of an unconstrained Tucker core ($\approx 3.98$, replicated), the
+saturated rank of capped LL1 blocks ($3.26$ of 4), and the compression optimum on
+pretrained FFN maps ($L \approx 4$--$8$) --- agree that LM FFN computation at this
+scale uses rank $\approx 4$ per route. Given that, the dense Tucker core is a
+dominated design point: it spends $91\%$ of its budget parameterizing interactions it
+will not use, costs $2\times$ wall-clock at matched FLOPs, and ends nominally last on
+validation loss. The structured middle of the family is free: LL1 at $L{=}4$ matches
+SwiGLU's loss with a small throughput edge while fixing, by construction, the rank
+structure the unconstrained model discovers by itself.
+
+\paragraph{What is plausible but not established.}
+That LL1's advantages grow with scale (its compression edge on real maps suggests the
+function class is right, but 52.5M-parameter training cannot confirm it); that the
+route/atom trade has a scale- or data-dependent optimum away from $L{=}1$--$4$; that
+rank-4 blocks are semantically coherent objects.
+
+\paragraph{What failed.}
+Our pre-registered interpretability hypothesis --- that LL1 would land between SwiGLU
+and Tucker on diffuseness while keeping CP-like factor stability --- is unsupported.
+Routing is diffuse for every architecture (49--64\% of capacity effectively active
+per token); and on the one proxy where architectures separate, cross-seed factor
+recurrence, LL1 is the only family \emph{at chance} under a gauge-invariant test that
+SwiGLU and Tucker both pass weakly. Identifiability of a decomposition given a fixed
+function evidently does not imply stability of the learned function's factors across
+training runs. The circuit pilot returned a clean null on emergence.
+
+\paragraph{Limitations.}
+One scale (52.5M / 100M tokens), one dataset and tokenizer, hyperparameters inherited
+from SwiGLU tuning (no per-architecture tuning; this likely flatters the baseline),
+Tucker evaluated with its best-known initialization and weight-decay exemption on the
+core (an asymmetry in its favor), single-seed $L$-sweep away from $L{=}4$,
+compression-regime distillation only, and statistical interpretability proxies rather
+than semantic evaluation of learned blocks.
+
+\paragraph{Next step.}
+The single most informative follow-up is a 10$\times$-scale repeat of the $L$-sweep
+(${\ge}300$M parameters, ${\ge}1$B tokens, per-architecture learning-rate tuning,
+${\ge}3$ seeds) testing whether the rank-4 optimum, the loss tie, and the throughput
+edge persist; second, a trained sparse variant (L1 on block routes) targeting the
+routing diffuseness that post-hoc truncation cannot remove.
 
 \section{Related work}
 \label{sec:related}
@@ -352,6 +701,55 @@ architecture that fixes those ranks directly realizes the map at exactly that co
 
 \section{Experimental details}
 \label{app:details}
-[hyperparameters, configs, hardware.]
+
+\paragraph{Hardware.} All sprint experiments ran on two NVIDIA A40 GPUs (46\,GB).
+
+\paragraph{Synthetic teacher--student (\S\ref{sec:synthetic}).}
+$d=64$; teachers: CP $=$ LL1$(B{=}32, L{=}1)$, LL1$(B{=}16, L{=}4)$, dense Tucker
+$r{=}s{=}16$ with slices resampled to full rank and core scaled by $1/r$; all factor
+entries i.i.d.\ $\mathcal N(0, 1/d)$; teacher outputs normalized to unit std. Students
+trained on 50{,}000 / validated on 8{,}000 inputs $x\sim\mathcal N(0, I_d)$; Adam,
+lr $3{\times}10^{-3}$ cosine-annealed to 1\%, batch 512, 5{,}000 steps, 3 seeds per
+cell. Budgets: $L$-sweep at $N{=}9216$ (within 8\% for all archs; exact counts
+reported with results); budget sweep $\{0.25, 0.5, 1, 2\}{\times}N$.
+
+\paragraph{Language modeling (\S\ref{sec:lm}).}
+LLaMA-style decoder: $d{=}512$, 8 layers, 8 heads, RoPE, RMSNorm, tied embeddings,
+GPT-2 BPE (50{,}257), context 1024. FFN budget matched to SwiGLU $m{=}1493$
+($2.293$M/layer $\pm 0.2\%$): Tucker $r{=}s{=}128$; LL1 $(L,B) \in
+\{(1,1493),(2,896),(4,498),(8,263),(16,136)\}$. AdamW $(\beta_1,\beta_2)=(0.9,0.95)$,
+weight decay 0.1 (Tucker core 0.0, inherited from prior work), peak lr
+$3{\times}10^{-4}$, 200-step warmup, cosine to 10\%, grad clip 1.0, batch
+$24\times1024$ tokens, bf16 autocast, 100M FineWeb-Edu (sample-10BT) tokens
+($\approx$4070 steps), validation on a held-out 128-sequence (131K-token) split with
+deterministic seed. Tucker uses the variance-preserving diagonal warm start
+($C_{ooo}{=}1$, off-diagonal std $10^{-2}/r$), the only initialization that matched
+SwiGLU in prior work on this codebase. Seeds 0--2 for SwiGLU, Tucker, LL1$(L{=}4)$;
+seed 0 for the remaining $L$ values.
+
+\paragraph{Pretrained-layer distillation (\S\ref{sec:interp}).}
+Teacher: Qwen2.5-0.5B \citep{yang2024qwen25} ($d{=}896$, $m{=}4864$, 13.07M
+params/FFN). We capture FFN input/output pairs on $\approx$120K tokens of FineWeb-Edu
+for layers $\{4, 12, 20\}$, normalize outputs to unit std, and fit students at
+budgets $\{0.6, 1.2, 2.4\}$M parameters ($4.6$--$18.4\%$ of the teacher layer) by
+MSE; Adam lr $2{\times}10^{-3}$, 4{,}000 steps, batch 512, 2 seeds; 90/10
+train/val split.
+
+\paragraph{Induction pilot (\S\ref{sec:induction}).}
+Sequences $[s;s]$, $s$ uniform over vocab 128, $|s|=64$; 2-layer transformers,
+$d{=}128$, 4 heads; FFN budget 131{,}072 params (SwiGLU $m{=}341$; LL1
+$L\in\{1,4,16\}$; Tucker $r{=}48$; attention-only control). AdamW lr $10^{-3}$,
+weight decay 0.01, batch 128, 3{,}000 steps, 3 seeds. Induction score: mean
+attention mass from second-half queries at offset $|s|-1$, max over layer-2 heads,
+on a fixed 256-sequence eval batch.
+
+\paragraph{Interpretability proxies (\S\ref{sec:interp}).}
+Contributions computed on 4096 randomly sampled token positions from a held-out
+32-sequence validation set. Unit contributions: SwiGLU $c_j = |h_j|\,\|u_j\|$;
+LL1 $c_b = \|U_b r_b\|\,|\silu(g_b\T x)|$; Tucker $c_j = \|V_j p\|\,|\silu(q_j)|$.
+Top-$k$ curves replace every layer's FFN output by the sum of its $k$
+largest-contribution units per token. Single-unit ablations zero one atom (SwiGLU),
+one block-gate (LL1), or one latent gate (Tucker; $\silu(0)=0$ removes the slice
+exactly) in one layer and re-evaluate full-model validation loss.
 
 \end{document}
