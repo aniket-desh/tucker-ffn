@@ -94,12 +94,19 @@ class FFNConfig:
     legacy_init: bool = False         # reproduce older (incorrect) init scaling
     n_blocks: int = None   # for ll1
     block_rank: int = None # for ll1
+    struct_kind: str = None    # for swiglu_struct: monarch/blockdiag/lowrank/butterfly
+    struct_nb: int = 4         # matrix blocks for structured kinds
 
 
 def build_ffn(d, cfg):
     if cfg.kind == "swiglu":
         assert cfg.m is not None
         return SwiGLUFFN(d, cfg.m, bias=False)
+    if cfg.kind == "swiglu_struct":
+        from .structured_ffn import StructuredSwiGLU
+        assert cfg.m is not None and cfg.struct_kind is not None
+        return StructuredSwiGLU(d, cfg.m, cfg.struct_kind,
+                                n_blocks=cfg.struct_nb)
     if cfg.kind == "ll1":
         assert cfg.n_blocks is not None and cfg.block_rank is not None
         return LL1FFN(d, n_blocks=cfg.n_blocks, block_rank=cfg.block_rank,
@@ -210,10 +217,14 @@ def make_lm(kind, d, n_heads, n_layers, vocab_size, max_seq_len,
             m=None, r=None, s=None, diagonal_only=False,
             diagonal_bias_init=False, diag_bias_eps=1e-2,
             legacy_init=False, tied=True,
-            n_blocks=None, block_rank=None):
+            n_blocks=None, block_rank=None,
+            struct_kind=None, struct_nb=4):
     """convenience factory. kind in {"swiglu","tucker","ll1"}."""
     if kind == "swiglu":
         ffn = FFNConfig(kind="swiglu", m=m)
+    elif kind == "swiglu_struct":
+        ffn = FFNConfig(kind="swiglu_struct", m=m,
+                        struct_kind=struct_kind, struct_nb=struct_nb)
     elif kind == "ll1":
         ffn = FFNConfig(kind="ll1", n_blocks=n_blocks, block_rank=block_rank)
     elif kind == "tucker":

@@ -72,3 +72,34 @@ interp negative was a measurement artifact and the interp story reopens.
   warm-start trajectory at 30M in sprint 1) — boosting core lr hurts. clr×0.5 next.
 - exp24 (superposition recovery) and exp25 (spectra) running; exp26 (Qwen contexts)
   written.
+
+## T+1:50 — Three confound verdicts land
+
+**Confound B (rank≈4) — sprint-1 claim CORRECTED.** Full spectra (exp25): trained
+Tucker per-route matrices have stable rank 3.97 but numerical rank ~56 (τ=0.1) /
+~116 (τ=0.01), spectral-entropy rank ~33, top-4 energy 39%. The unconstrained model
+keeps a long substantial tail; "the trained dense core IS an L≈4 LL1 model" was a
+stable-rank artifact. Surviving form of the claim: the top-4 directions dominate the
+energy *head*, and LL1's loss-tie at L=4 shows the tail is cheap to discard at this
+scale — not that it doesn't exist. (Init anchors: diagWS init stable rank=1.00,
+random init 27.5; LL1 caps verified exactly: nr0.1 = L for L∈{1,2,4}; L=8 uses 8.0,
+L=16 uses 16.0 — interesting: numerical rank saturates caps even when stable rank
+under-saturates.)
+
+**Confound C (Tucker fairness) — deficit not a core-lr artifact.** At 30M tokens:
+default core-lr 5.36 (sprint-1 trajectory) < clr×2 5.483 < noWS 5.495 < clr×0.5
+5.545. Both lr adjustments and random init hurt; the warm start remains load-bearing.
+
+**Confound A (route/atom) — first empirical half.** atom-matched SwiGLU (m=1992
+atoms+routes, +33% params): 4.716±0.018 (n=2) — beats LL1(L=4) 4.747 at equal atoms
+by spending 33% more params. LL1-at-budget ≈ SwiGLU-at-budget remains a tie. So gate
+tying is how you buy atoms without params; atoms-with-params is simply better
+(capacity). route-matched (m=498, −67% params) running now.
+
+**exp24 (superposition) — striking interp negative pending swap-aware rerun:** even
+with NO superposition (K=48<d), task solved to 98% variance, students' atoms show
+~zero alignment with the generating rank-one atoms; route-L1 does not change it.
+Swap-aware scoring rerun in flight to rule out the (w↔g) metric artifact.
+
+**exp23 (structured factors):** monarch < dense < blockdiag confirmed on layer 4 at
+0.6M; ll1/butterfly rows + layer 12 pending.

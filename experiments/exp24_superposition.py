@@ -165,8 +165,10 @@ def recovery_metrics(student, F, pairs, V, thresh=0.8):
     for pi, (i, j) in enumerate(pairs):
         fi, fj, vij = nrm(F[:, i]), nrm(F[:, j]), nrm(V[:, pi])
         for ai, (u, w, g) in enumerate(atoms):
-            s = abs(float(nrm(w) @ fi)) * abs(float(nrm(g) @ fj)) * \
-                abs(float(nrm(u) @ vij))
+            wu, gu, uu = nrm(w), nrm(g), nrm(u)
+            cu = abs(float(uu @ vij))
+            s = max(abs(float(wu @ fi)) * abs(float(gu @ fj)),
+                    abs(float(wu @ fj)) * abs(float(gu @ fi))) * cu
             scores[pi, ai] = s
     # greedy assignment
     matched, used = [], set()

@@ -162,6 +162,18 @@ def train_one(arch, seed, args, device, val_inp, val_tgt, tokenizer,
                          n_layers=args.n_layers, vocab_size=args.vocab_size,
                          max_seq_len=args.seq_len, r=args.tucker_r,
                          s=args.tucker_s, diagonal_only=True)
+    elif arch.startswith("struct_"):
+        # arch tag "struct_{kind}{nb}": StructuredSwiGLU at the matched budget
+        from lib.structured_ffn import swiglu_struct_width_for_params
+        kind = arch[len("struct_"):].rstrip("0123456789")
+        nb = int(arch[len("struct_") + len(kind):] or 4)
+        target = swiglu_params(args.d, args.swiglu_m)
+        m = swiglu_struct_width_for_params(args.d, target, kind, n_blocks=nb)
+        log("info", f"struct arch: kind={kind} nb={nb} m={m} (target {target})")
+        model = make_lm("swiglu_struct", d=args.d, n_heads=args.n_heads,
+                         n_layers=args.n_layers, vocab_size=args.vocab_size,
+                         max_seq_len=args.seq_len, m=m, struct_kind=kind,
+                         struct_nb=nb)
     elif arch.startswith("ll1_l"):
         # arch tag "ll1_l{L}": block rank L, n_blocks matched to the swiglu
         # ffn parameter budget 3*d*swiglu_m.
