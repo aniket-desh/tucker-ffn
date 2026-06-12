@@ -75,7 +75,7 @@ Sprint start (UTC): **2026-06-12T03:22Z**. Hard ceiling 24h → must stop by 202
 - Queued: exp21 (Qwen distillation) on GPU0 when exp18 ends; throughput bench when a
   GPU is fully idle; exp19/exp22 when LM checkpoints land.
 
-## T+4:00 — Distillation pattern + tucker circuit anomaly mechanism
+## T+2:40 (mislabeled earlier as T+4:00) — Distillation pattern + tucker circuit anomaly mechanism
 
 - exp21 (Qwen2.5-0.5B layer 4, budgets 0.6M/1.2M): LL1 L≥2 consistently beats CP
   (relMSE 0.601-0.609 vs 0.625 at 0.6M; 0.511-0.513 vs 0.528 at 1.2M), saturating
@@ -89,7 +89,7 @@ Sprint start (UTC): **2026-06-12T03:22Z**. Hard ceiling 24h → must stop by 202
 - exp18 final figures regenerated with best-of-seed lines + consistent colors.
 - LM: swiglu seed0 done 4.7626 (prior work 4.758 ✓). seed1 at 28M; tucker seed0 48M.
 
-## T+4:45 — exp20b complete (induction mechanism probe)
+## T+2:55 (mislabeled) — exp20b complete (induction mechanism probe)
 
 - FFN-bypass collapses ALL architectures (swiglu 0.13, tucker 0.03-0.22 accuracy) —
   off-distribution intervention, not tucker-specific. Lesson logged: FFN-bypass is not
@@ -101,7 +101,7 @@ Sprint start (UTC): **2026-06-12T03:22Z**. Hard ceiling 24h → must stop by 202
   existence proof that the dense-core FFN admits an alternative copying basin.
 - exp20 phase closed: emergence-speed null + this single-seed anomaly.
 
-## T+5:20 — exp21 complete (Qwen distillation)
+## T+3:05 (mislabeled) — exp21 complete (Qwen distillation)
 
 Robust ordering across all 9 (layer × budget) cells, 2 seeds each (seed var ±0.001):
 LL1(L=4-16) < LL1(L=2) < CP=LL1(L=1)=SwiGLU << dense Tucker. Gains of LL1 over CP:
@@ -112,3 +112,16 @@ The L-knee at ~4-8 matches the prior trained-Tucker stable-rank ρ̄≈4. ll1_l1
 within 0.001 in every cell (implementation control).
 Interpretation: real pretrained FFN input-output maps contain routed low-rank block
 structure; per-route rank ~4-8 captures it at matched compression budget.
+
+## T+3:14 (06:36 UTC) — headline results all in; timestamp correction
+
+- NOTE: log labels between T+2:15 and here were inflated (wakeup cadence misjudged);
+  corrected above. True elapsed: 3h14m.
+- LM headline (100M tokens, matched 52.5M params, 3 seeds):
+  ll1_l4 4.7472±0.0041 | swiglu 4.7542±0.0104 | tucker 4.7578±0.0024 (n=2, seed2 rerun
+  in flight after a deliberate scheduling kill). Welch t(LL1 vs SwiGLU)≈1.1 → tie,
+  LL1 nominally ahead. swiglu seed0 reproduces prior draft (4.763 vs 4.758).
+- Throughput (idle A40, bf16, matched FLOPs 4.59e6 MAC/tok/layer): ll1_l2..16
+  74.8-76.2K train tok/s > swiglu 71.4K > tucker 36.5K (1.95-2.06x slower).
+- exp22 (early): swiglu cross-seed matched atom cosine 0.269 vs null 0.089.
+- In flight: ll1_l1/l8 (GPU0), tucker seed2 + ll1_l2/l16 (GPU1), exp19, exp22.

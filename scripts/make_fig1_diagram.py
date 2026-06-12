@@ -61,8 +61,8 @@ ax.text(5.6, 1.0, r"route $\alpha_j(x)=\sigma(g_j^\top x)$", fontsize=8,
 arrow(ax, 5.0, 1.7, 6.5, 4.4, color=C_GATE, ls=":")
 box(ax, 7.9, 4.2, 1.9, 1.6, "#807dba", r"$u_j$")
 arrow(ax, 7.15, 5.0, 7.9, 5.0)
-ax.text(5.0, 9.3, r"1 route $\to$ 1 rank-1 atom", fontsize=9, ha="center")
-ax.text(5.0, 8.45, r"$m$ routes, $m$ atoms", fontsize=8, ha="center",
+ax.text(5.0, 9.55, r"1 route $\to$ 1 rank-1 atom", fontsize=9, ha="center")
+ax.text(5.0, 8.7, r"$m$ routes, $m$ atoms", fontsize=8, ha="center",
         color=C_GRAY)
 
 # ── B: LL1 block ────────────────────────────────────────────────────────────
@@ -84,8 +84,8 @@ ax.text(5.4, 1.0, r"one route $\alpha_b(x)$, shared", fontsize=8, color=C_GATE)
 box(ax, 7.9, 4.2, 1.9, 1.6, "#807dba", r"$U_b$")
 for dy in (-0.85, 0.0, 0.85):
     arrow(ax, 6.95, 5.0 + dy, 7.9, 5.0)
-ax.text(5.0, 9.3, r"1 route $\to$ 1 rank-$L$ block", fontsize=9, ha="center")
-ax.text(5.0, 8.45, r"$B$ routes, $BL$ atoms,  $V_b = U_b A_b^\top$",
+ax.text(5.0, 9.55, r"1 route $\to$ 1 rank-$L$ block", fontsize=9, ha="center")
+ax.text(5.0, 8.7, r"$B$ routes, $BL$ atoms,  $V_b = U_b A_b^\top$",
         fontsize=8, ha="center", color=C_GRAY)
 
 # ── C: dense Tucker ─────────────────────────────────────────────────────────
@@ -110,9 +110,9 @@ arrow(ax, 4.9, 7.3, 6.4, 5.9)
 arrow(ax, 4.9, 2.7, 6.4, 3.6, color=C_GATE, ls=":")
 box(ax, 8.2, 4.2, 1.6, 1.6, "#807dba", r"$R$")
 arrow(ax, 7.8, 4.9, 8.2, 4.9)
-ax.text(5.0, 9.3, r"1 route $\to$ full-rank $V_j = RC^{(j)}$", fontsize=9,
+ax.text(5.0, 9.55, r"1 route $\to$ full-rank $V_j = RC^{(j)}$", fontsize=9,
         ha="center")
-ax.text(5.0, 8.45, r"$r$ routes, all-to-all core, gauge freedom", fontsize=8,
+ax.text(5.0, 8.7, r"$r$ routes, all-to-all core, gauge freedom", fontsize=8,
         ha="center", color=C_GRAY)
 
 # ── D: matched-budget geometry ──────────────────────────────────────────────

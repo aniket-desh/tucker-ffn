@@ -97,8 +97,27 @@ precision, so these are optimization-reachable representations, not just existen
 claims. Caveat: d=64 gaussians, structure-matched teachers; says nothing yet about
 real LM computation.
 
-### 8.2 LM training (exp11) — [PENDING; swiglu seed0 = 4.763 final val loss,
-reproducing prior 4.758]
+### 8.2 LM training (exp11): three-way statistical tie; LL1 nominally ahead and faster
+
+52.5M-param LMs, 100M FineWeb-Edu tokens, matched FFN budgets, identical
+hyperparameters (3 seeds each; tucker seed 2 rerunning after a scheduling restart):
+
+| arch | final val loss (mean ± std) | ppl | train tok/s (A40, idle) |
+|---|---|---|---|
+| LL1 (L=4, B=498) | **4.7472 ± 0.0041** | 115.3 | 75,251 |
+| SwiGLU (m=1493) | 4.7542 ± 0.0104 | 116.1 | 71,373 |
+| Tucker (r=s=128, diag-init) | 4.7578 ± 0.0024 (n=2) | 116.5 | 36,545 |
+
+Welch t for LL1 vs SwiGLU ≈ 1.1 — **a statistical tie**; we do not claim an LL1 loss
+win. What is *not* a tie: throughput. At matched parameters and matched FLOPs
+(4.59e6 MACs/token/layer ±0.2%), LL1 trains 5–7% faster than SwiGLU (smaller gate
+GEMM) and 2.06× faster than Tucker, whose core contraction is GEMM-unfriendly.
+SwiGLU seed0 reproduces the prior draft's result (4.763 vs 4.758). L-sweep at
+L∈{1,2,8,16} (1 seed each): [PENDING — runs in flight].
+
+Reading: gate-diversity loss (×3 fewer routes at L=4) and atom gain (+33%) cancel at
+this scale on language modeling loss; the LL1 parameterization costs nothing
+end-to-end while buying throughput and bounded per-route structure.
 
 ### 8.3 Real-layer distillation (exp21): real FFN maps prefer small per-route rank > 1
 
