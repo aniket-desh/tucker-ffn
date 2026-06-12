@@ -170,20 +170,25 @@ layer 3 over top+random units): at 52.5M params no single atom/block/gate is
 load-bearing; effects scale with unit size (Tucker's 128-gate units have ~10× the
 median effect of SwiGLU's atoms), not with structure.
 
-**Factor stability across seeds is weak everywhere, and only SwiGLU clears chance.**
+**Factor stability across seeds is weak everywhere, and LL1 is the one at chance.**
 Cross-seed greedy matching: SwiGLU joint atoms [w;g;u] match at cosine 0.268 vs null
 0.089 (3.0×); gate directions alone are at chance for ALL architectures (swiglu 0.154
 vs null 0.155; ll1 0.135 vs 0.134; tucker 0.116 vs 0.115); gauge-invariant per-route
-interaction matrices vec(V): swiglu 0.0100 vs null 0.0060 (1.7×), ll1 0.0065 vs null
-0.0079 (at chance). LL1's theoretical identifiability advantages do not translate
-into cross-seed recurrence of learned blocks at this scale — an honest negative for
-the "structured ⇒ stable factors" hypothesis.
+interaction matrices vec(V): swiglu 0.0100 vs null 0.0060 (1.7×), tucker 0.0118 vs
+null 0.0073 (1.6×), ll1 0.0065 vs null 0.0077 (at chance). LL1's theoretical
+identifiability advantages do not translate into cross-seed recurrence of its learned
+blocks at this scale — an honest negative for the "structured ⇒ stable factors"
+hypothesis (we suspect the block partition itself, B=498 groups of 4 atoms, adds
+combinatorial assignment freedom that atom-level CP does not have).
 
 Tucker core diagnostics: 26.8% of core energy remains on the superdiagonal (warm-start
 legacy), effective entry fraction 8% — the core is neither dense-uniform nor
 block-structured.
 
-### 8.5 Induction pilot (exp20/exp20b)
+### 8.5 LM L-sweep — [last runs in flight; ll1_l1 control = 4.765, inside the
+swiglu seed range, confirming the L=1 ≡ SwiGLU equivalence end-to-end]
+
+### 8.6 Induction pilot (exp20/exp20b)
 
 Emergence: all FFN architectures learn the repeated-sequence induction task at
 statistically identical speed (steps-to-90% accuracy: 140–180 across
@@ -197,6 +202,130 @@ Mechanism: every swiglu/ll1 run converges to the canonical induction attention p
 in 1/3 seeds (score 0.34) — exp20b is probing what circuit those models use (offset
 profiles, FFN-bypass, head ablations). [exp20b PENDING]
 
-## 9–15: [PENDING final results]
+## 9. Interpretability vs expressivity tradeoff
 
-## Red-team checklist: [TO ANSWER AT END]
+The sprint's central quantitative statement: the per-route interaction rank L is a
+real, measurable property of FFN computation, and at LM scale it is ≈4.
+
+- Expressivity side: dense Tucker's nominal superset capacity never pays — it loses
+  every matched-budget comparison (synthetic non-Tucker teachers, real-map
+  compression, throughput) and merely ties on LM loss while learning rank-4 slices.
+- Interpretability side: the proxies do not support a strong "LL1 is more
+  interpretable" claim. LL1 reduces the number of routed objects 3× at equal loss and
+  bounds each object's rank by construction (no post-hoc rank discovery needed), but
+  its routing is no sparser relative to capacity, and its blocks recur across seeds no
+  better than chance. SwiGLU's atoms remain the most seed-stable objects.
+- Net: LL1's wins are concrete but engineering-flavored (throughput, compression,
+  bounded structure, fewer objects); the mechanistic-interpretability advantage is
+  not demonstrated by our proxies.
+
+## 10. Circuit-level pilot
+
+See §8.6. Null on emergence speed; single-seed existence proof that the dense-core
+FFN admits an alternative copying implementation (diffuse attention + FFN). A proper
+follow-up would train many seeds and characterize basin frequency vs architecture.
+
+## 11. What changed our mind
+
+1. Going in, dense Tucker was the prior draft's proposal and LL1 the hypothesized
+   sweet spot on *interpretability*. The data moved the LL1 case from interpretability
+   to *efficiency + structural honesty*: it matches the rank the computation actually
+   uses, at SwiGLU speed, with no loss penalty — but the interp proxies are a wash.
+2. The aligned-width theorem's role flipped: from "Tucker is k× cheaper than SwiGLU"
+   to "per-route rank is the priced quantity, and its empirical value is small."
+3. exp20b taught us that FFN-bypass is not a valid circuit test (all archs collapse);
+   only the attention-offset profile cleanly separated mechanisms.
+4. Factor-stability: we expected identifiability to help LL1; measured the opposite.
+
+## 12. What failed or was inconclusive
+
+- LL1 loss advantage over SwiGLU at LM scale: not established (tie, t≈1.1).
+- "Structured ⇒ stable factors": failed under our matching metrics.
+- Sparse-CP trained variants (L1 on routes): not run (time); only post-hoc top-k.
+- Monarch/butterfly factor axis: not run (deprioritized per plan).
+- Induction emergence effects: clean null.
+
+## 13. Limitations
+
+- Scale: 52.5M params / 100M tokens / one dataset (FineWeb-Edu) / one tokenizer.
+- Hyperparameters inherited from SwiGLU tuning (conservative for LL1 and Tucker, but
+  Tucker also gets its best-known init and wd=0 core — a fairness asymmetry in
+  Tucker's favor).
+- L-sweep at LM scale is single-seed except L=4.
+- Interpretability proxies measure statistics of routing/structure, not semantic
+  legibility; no human/auto-interp evaluation of atoms or blocks was done.
+- Distillation tested the compression regime only (students ≪ teacher).
+- exp18/exp21 students trained with one optimizer recipe; representational
+  conclusions rest on best-of-seeds reaching machine precision where expected.
+
+## 14. Next steps
+
+1. Scale the LL1 L-sweep (≥300M params, ≥1B tokens, per-arch lr tuning, ≥3 seeds) to
+   test whether the rank-4 sweet spot and the throughput edge persist.
+2. Trained sparsity: L1 on block routes (sparse-LL1) targeting the eff-active gap.
+3. Auto-interp evaluation of blocks vs atoms (are rank-4 blocks human-describable?).
+4. Monarch-factorized A_b/U_b for the efficiency axis.
+5. Inducing-basin study for the Tucker alternative-circuit observation.
+
+## 15. Research map
+
+- lib/ll1_ffn.py — LL1FFN + exactness tests. lib/lm.py — ll1 wiring.
+- experiments/exp18_ll1_synthetic.py → results/exp18, figures exp18_*.png,
+  data/exp18_results.json
+- experiments/exp11_train_lm.py (extended) → results/sprint_lm, figures lm_*.png,
+  tables/lm_final.md, tables/matched_configs.md
+- experiments/exp19_interp_proxies.py → data/exp19_results.json, figures interp_*.png,
+  tables/interp_summary.md
+- experiments/exp20_induction.py, exp20b_tucker_mechanism.py → data/exp20*.json,
+  figures exp20_curves.png, exp20b_offsets.png
+- experiments/exp21_qwen_distill.py → data/exp21_results.json, figures exp21_distill.png
+- experiments/exp22_factor_stability.py → data/exp22_results.json
+- scripts/sprint_throughput.py → results/sprint_throughput.json
+- docs/structured_tensor_ffn_sprint/{plan,theory_notes,architecture_spec,research_log,
+  scripts_used}.md; paper draft in paper/main.tex.
+
+## Red-team checklist (TASK §12)
+
+1. **Did LL1 beat CP/SwiGLU at matched parameter count?** On LM loss: no — tie
+   (4.747±0.004 vs 4.754±0.010, n=3 each). On real-map compression: yes, modestly but
+   robustly (all 9 cells, ~30× seed noise). On synthetic LL1-class targets: yes,
+   decisively. On throughput: yes (+5-7%).
+2. **Matched FLOPs or only params?** Both — FLOP counts match within ±0.2% by
+   construction (table in architecture_spec); throughput measured separately.
+3. **Did LL1 beat dense Tucker?** Yes on every axis except LM loss (tie) — and
+   Tucker is 2.06× slower.
+4. **Did dense Tucker actually use dense core structure?** No: per-gate stable rank
+   ≈4 (replicated, 2 seeds), 27% of core energy still superdiagonal, 8% effective
+   entries. This is the strongest evidence the dense core is the wrong
+   parameterization.
+5. **Did sparse CP improve proxies without destroying performance?** Only post-hoc
+   top-k was tested: all archs tolerate moderate per-token truncation; none is
+   sparse. Trained-sparse variants untested.
+6. **Are gains larger than seed noise?** Compression gains: yes (~30×noise). LM
+   "gain": no — explicitly reported as a tie. Throughput: yes (measurement noise
+   ~1-2%).
+7. **Explained by hidden width or param count?** Param/FLOP counts matched to ±0.2%;
+   LL1's atom-count advantage at matched params is the *mechanism under study*, not a
+   confound — we state it as the route/atom trade.
+8. **Throughput honest?** Idle-GPU benchmark, bf16, fwd and fwd+bwd+opt, 20-iter
+   timed after warmup; training step_dt logs corroborate (contended numbers higher
+   for all).
+9. **Interpretability measured or asserted?** Measured; results reported are mostly
+   *negative* for our own hypothesis H3.
+10. **Baselines tuned fairly?** Shared hyperparams tuned historically for SwiGLU;
+    Tucker gets its best-known init + wd=0 core. LL1 received no dedicated tuning —
+    if anything the deck was stacked against it.
+11. **Did synthetic transfer to real?** Yes: the L-knee (synthetic, exact) reappears
+    as a soft knee in real-map compression and as the learned stable rank of an
+    unconstrained model.
+12. **Did the induction pilot measure a circuit or only behavior?** Both: behavior
+    (accuracy/emergence: null) and mechanism (attention-offset profiles: one
+    alternative-circuit seed; head/FFN ablations — with the FFN-bypass caveat).
+13. **Did any experiment falsify the initial story?** Yes: H3 (LL1 interpretability
+    advantage) is unsupported; factor-stability went the wrong way for LL1.
+14. **Simplest explanation of the results?** LM FFN computation at this scale needs
+    many moderately-diffuse routed interactions of low per-route rank (~4). Any
+    parameterization that can express that cheaply (SwiGLU with 3 atoms/4... or LL1
+    directly) reaches the same loss; parameterizations that can't allocate routes
+    (dense Tucker) waste budget. Nothing here requires appeal to interpretability or
+    identifiability.
