@@ -125,3 +125,14 @@ structure; per-route rank ~4-8 captures it at matched compression budget.
   74.8-76.2K train tok/s > swiglu 71.4K > tucker 36.5K (1.95-2.06x slower).
 - exp22 (early): swiglu cross-seed matched atom cosine 0.269 vs null 0.089.
 - In flight: ll1_l1/l8 (GPU0), tucker seed2 + ll1_l2/l16 (GPU1), exp19, exp22.
+
+## T+5:40 (09:02 UTC) — All experiments complete
+
+- ll1_l16 final run done. Full L-sweep: 4.765 / 4.740 / 4.747±.004 / 4.742 / 4.750
+  (L=1/2/4/8/16); swiglu 4.754±.010; tucker 4.763±.007. Flat sweep, everything L≥2
+  at/below swiglu mean.
+- exp19b: tucker seed2 stable rank 3.97 (third replication); LL1 realized ranks
+  1.83/3.26/5.62 for caps 2/4/8; eff-active fraction monotone in L (0.50→0.65).
+- exp22b: tucker 1vs2 V_cos 0.0120 vs null 0.0079 — V-recurrence replication.
+- All artifacts regenerated; paper experiment numbers final. Moving to red-team +
+  final writing. GPU work: done. Total experiment phase: 5h40m wall.

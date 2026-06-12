@@ -236,8 +236,18 @@ Tucker core diagnostics: 26.8% of core energy remains on the superdiagonal (warm
 legacy), effective entry fraction 8% — the core is neither dense-uniform nor
 block-structured.
 
-### 8.5 LM L-sweep — [last runs in flight; ll1_l1 control = 4.765, inside the
-swiglu seed range, confirming the L=1 ≡ SwiGLU equivalence end-to-end]
+### 8.5 LM L-sweep (complete)
+
+| L | 1 | 2 | 4 (3 seeds) | 8 | 16 | — | SwiGLU | Tucker |
+|---|---|---|---|---|---|---|---|---|
+| val loss | 4.765 | 4.740 | 4.747±0.004 | 4.742 | 4.750 | | 4.754±0.010 | 4.763±0.007 |
+
+The sweep is flat: every L ≥ 2 sits at or below the SwiGLU mean; L=1 reproduces
+SwiGLU (control); no sharp optimum, consistent with a wide loss-neutral plateau in
+the route/atom trade. Realized per-route stable ranks under-saturate caps as L grows
+(L=2→1.83, L=4→3.26, L=8→5.62), and routing diffuseness rises monotonically with L
+(eff-active fraction 0.50→0.58→0.63→0.65), interpolating from SwiGLU toward Tucker
+(0.65).
 
 ### 8.6 Induction pilot (exp20/exp20b)
 

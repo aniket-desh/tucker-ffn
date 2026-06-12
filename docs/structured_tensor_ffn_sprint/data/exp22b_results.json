@@ -1,0 +1,106 @@
+[
+  {
+    "arch": "tucker",
+    "seeds": [
+      1,
+      2
+    ],
+    "mean_matched_cos": 0.11514555017970451,
+    "mean_null_cos": 0.11485243516835908,
+    "mean_gate_cos": 0.11514555017970451,
+    "mean_gate_null": 0.1148108701036108,
+    "mean_v_cos": 0.011986271715727526,
+    "mean_v_null": 0.007865519080951344,
+    "layers": [
+      {
+        "layer": 0,
+        "matched_cos": 0.11585326275417174,
+        "null_cos": 0.11597638255625498,
+        "gate_matched_cos": 0.11585326275417174,
+        "gate_null_cos": 0.1148688925022725,
+        "v_matched_cos": 0.012450518983769143,
+        "v_null_cos": 0.010178911872571916,
+        "v_subspace_overlap": 0.007741035397146952,
+        "v_subspace_null": 0.006783157063182443
+      },
+      {
+        "layer": 1,
+        "matched_cos": 0.11646920960629359,
+        "null_cos": 0.11468157557101222,
+        "gate_matched_cos": 0.11646920960629359,
+        "gate_null_cos": 0.11345165430975612,
+        "v_matched_cos": 0.012950146510320337,
+        "v_null_cos": 0.010143847868675948,
+        "v_subspace_overlap": 0.007820982782754535,
+        "v_subspace_null": 0.008174498507287353
+      },
+      {
+        "layer": 2,
+        "matched_cos": 0.11323427742172498,
+        "null_cos": 0.11539122913382016,
+        "gate_matched_cos": 0.11323427742172498,
+        "gate_null_cos": 0.11546908706077375,
+        "v_matched_cos": 0.012136460305555374,
+        "v_null_cos": 0.010089678318763617,
+        "v_subspace_overlap": 0.00783312570096718,
+        "v_subspace_null": 0.00761338957818225
+      },
+      {
+        "layer": 3,
+        "matched_cos": 0.11295950002386235,
+        "null_cos": 0.11498393328292877,
+        "gate_matched_cos": 0.11295950002386235,
+        "gate_null_cos": 0.11398340911546256,
+        "v_matched_cos": 0.011925019662157865,
+        "v_null_cos": 0.010182844705923344,
+        "v_subspace_overlap": 0.007448142971843481,
+        "v_subspace_null": 0.007945763121824712
+      },
+      {
+        "layer": 4,
+        "matched_cos": 0.11805656306387391,
+        "null_cos": 0.11493114806216909,
+        "gate_matched_cos": 0.11805656306387391,
+        "gate_null_cos": 0.11722447679494508,
+        "v_matched_cos": 0.01136742436028726,
+        "v_null_cos": 0.01031220983077219,
+        "v_subspace_overlap": 0.007887179327164111,
+        "v_subspace_null": 0.0069307671510614455
+      },
+      {
+        "layer": 5,
+        "matched_cos": 0.11337816357263364,
+        "null_cos": 0.11430538720378536,
+        "gate_matched_cos": 0.11337816357263364,
+        "gate_null_cos": 0.11353709442482796,
+        "v_matched_cos": 0.011797621018558857,
+        "v_null_cos": 0.010076092778035672,
+        "v_subspace_overlap": 0.007486098246382815,
+        "v_subspace_null": 0.007877105847001076
+      },
+      {
+        "layer": 6,
+        "matched_cos": 0.11535274249763461,
+        "null_cos": 0.11284936116135214,
+        "gate_matched_cos": 0.11535274249763461,
+        "gate_null_cos": 0.11531273383297957,
+        "v_matched_cos": 0.011331538677950448,
+        "v_null_cos": 0.010219499757567974,
+        "v_subspace_overlap": 0.0076395879435699945,
+        "v_subspace_null": 0.008289289369713515
+      },
+      {
+        "layer": 7,
+        "matched_cos": 0.1158606824974413,
+        "null_cos": 0.11570046437554993,
+        "gate_matched_cos": 0.1158606824974413,
+        "gate_null_cos": 0.11463961278786883,
+        "v_matched_cos": 0.01193144420722092,
+        "v_null_cos": 0.010034884560809587,
+        "v_subspace_overlap": 0.007907670745798559,
+        "v_subspace_null": 0.009310182009357959
+      }
+    ],
+    "mean_v_overlap": 0.0077204778894534535
+  }
+]

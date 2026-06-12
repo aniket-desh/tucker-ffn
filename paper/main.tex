@@ -444,9 +444,12 @@ only in FFN (Table~\ref{tab:configs}); 3 seeds for SwiGLU, LL1($L{=}4$), and Tuc
 initialization. Throughput is measured separately on an idle A40.
 
 \textbf{Result.} Final validation loss: LL1($L{=}4$) $4.7472 \pm 0.0041$, SwiGLU
-$4.7542 \pm 0.0104$, Tucker $4.7623 \pm 0.0072$ (mean $\pm$ std over 3 seeds). LL1
-vs.\ SwiGLU is a statistical tie (Welch $t \approx 1.1$); LL1 vs.\ Tucker separates
-(t $\approx 3.1$). [L-SWEEP NUMBERS]. Training throughput at matched FLOPs
+$4.7542 \pm 0.0104$, Tucker $4.7626 \pm 0.0071$ (mean $\pm$ std over 3 seeds;
+Figure~\ref{fig:lm}). LL1 vs.\ SwiGLU is a statistical tie (Welch $t \approx 1.1$);
+LL1 vs.\ Tucker separates ($t \approx 3.1$). The $L$-sweep is flat with a shallow
+optimum away from the corners (single seeds: $L{=}1$: $4.765$ --- matching SwiGLU's
+range and confirming the $L{=}1\equiv$SwiGLU control end-to-end; $L{=}2$: $4.740$;
+$L{=}8$: $4.742$; $L{=}16$: $4.750$). Training throughput at matched FLOPs
 ($4.59{\times}10^6$ MACs/token/layer for every architecture): LL1 75.3K tokens/s,
 SwiGLU 71.4K, Tucker 36.5K --- LL1 is $5$--$7\%$ faster than SwiGLU (its gate GEMM is
 $2L{+}1$ smaller) and $2.06\times$ faster than Tucker, whose core contraction is
@@ -462,6 +465,23 @@ loss.
 \textbf{Caveat.} 52.5M parameters, 100M tokens, one dataset, hyperparameters
 inherited from SwiGLU tuning; the $L$-sweep is single-seed away from $L{=}4$.
 
+\begin{figure}[t]
+\centering
+\begin{minipage}{0.48\textwidth}
+\includegraphics[width=\textwidth]{figures/lm_lsweep.pdf}
+\end{minipage}\hfill
+\begin{minipage}{0.50\textwidth}
+\includegraphics[width=\textwidth]{figures/lm_curves.pdf}
+\end{minipage}
+\caption{Matched-budget language modeling (52.5M parameters, 100M FineWeb-Edu
+tokens). Left: final validation loss across the LL1 block-rank sweep (error bar =
+std over 3 seeds at $L{=}4$; other $L$ single-seed), with SwiGLU (blue) and dense
+Tucker (red) 3-seed bands. Every $L \ge 2$ sits at or below the SwiGLU mean; the
+sweep is flat. Right: validation-loss curves (mean $\pm$ std over 3 seeds) ---
+the three families are indistinguishable through training.}
+\label{fig:lm}
+\end{figure}
+
 \subsection{Interpretability proxies: the computation has rank $\approx 4$ per route, and no architecture routes sparsely}
 \label{sec:interp}
 
@@ -473,10 +493,11 @@ single-unit ablations, weight-based per-gate stable ranks, and cross-seed factor
 matching with shuffled-weight nulls (Appendix~\ref{app:details}).
 
 \textbf{Result.} (i) The trained dense Tucker models use per-gate stable rank
-$3.97/3.99/[\,\cdot\,]$ (seeds; max 5.3) of an available 128; LL1 capped at $L{=}4$
-saturates to 3.26. With the distillation knee at $L \approx 4$--$8$, three
-independent measurements give the same answer: \emph{the natural per-route rank of
-FFN computation at this scale is $\approx 4$}. (ii) No architecture routes sparsely:
+$3.97/3.99/3.97$ (three seeds; max 5.3) of an available 128; LL1's realized rank
+tracks but under-saturates its cap ($1.83$ at $L{=}2$, $3.26$ at $L{=}4$, $5.62$ at
+$L{=}8$). With the distillation knee at $L \approx 4$--$8$, three independent
+measurements give the same answer: \emph{the natural per-route rank of FFN
+computation at this scale is $\approx 4$--$6$}. (ii) No architecture routes sparsely:
 effective active units per token are 49\% of capacity for SwiGLU (733/1493), 63\% for
 LL1 (312/498), 64\% for Tucker (82/128); to stay within 0.03 nats of base loss,
 SwiGLU needs $\sim$34\% of its atoms per token, LL1 $\sim$51\% of blocks, Tucker
