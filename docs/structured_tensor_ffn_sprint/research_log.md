@@ -136,3 +136,16 @@ structure; per-route rank ~4-8 captures it at matched compression budget.
 - exp22b: tucker 1vs2 V_cos 0.0120 vs null 0.0079 — V-recurrence replication.
 - All artifacts regenerated; paper experiment numbers final. Moving to red-team +
   final writing. GPU work: done. Total experiment phase: 5h40m wall.
+
+## T+6:10 (09:30 UTC) — Writing and red-team
+
+- summary.md complete: executive summary, all 15 sections, 14-question red-team
+  checklist answered.
+- paper/main.tex complete (14 pp): abstract, intro (7-paragraph structure +
+  contributions), exact theory section (routed CP → V_j → LL1 + budget identity),
+  4 experiment sections in Question/Setup/Metric/Result/Interpretation/Caveat form,
+  discussion (established/plausible/failed/limitations/next step), related work,
+  theorem appendix with proof + LL1 remark, full experimental-details appendix.
+- Red-team pass (docs/paper_writing/red_team.md): fixed gauge-freedom transpose,
+  GEMM-factor sloppiness, softened "identifiable parameterization", added
+  init-conditionality caveat for the stable-rank result. All numbers traced to JSONs.

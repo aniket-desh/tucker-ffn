@@ -39,3 +39,30 @@ CUDA_VISIBLE_DEVICES=1 .venv/bin/python experiments/exp20_induction.py \
 ```
 
 (exp19 interp proxies + scripts/sprint_throughput.py: commands appended when run.)
+
+```bash
+# analyses on trained checkpoints
+.venv/bin/python experiments/exp19_interp_proxies.py --ckpts <8 headline ckpts> \
+  --results_dir results/exp19      # + results/exp19b for tucker_seed2 & L-sweep ckpts
+.venv/bin/python experiments/exp22_factor_stability.py --ckpt_pairs \
+  "<swiglu 0,1>;<swiglu 1,2>;<ll1_l4 0,1>;<ll1_l4 1,2>;<tucker 0,1>" \
+  --results_dir results/exp22      # + exp22b for tucker 1,2
+CUDA_VISIBLE_DEVICES=0 .venv/bin/python scripts/sprint_throughput.py   # idle GPU
+
+# rebalanced final LM runs (after killing GPU1 queue at T+3:05)
+CUDA_VISIBLE_DEVICES=1 .venv/bin/python experiments/exp11_train_lm.py --archs tucker \
+  --seeds 2 --tucker_diagonal_bias_init --max_tokens 100000000 --results_dir results/sprint_lm
+CUDA_VISIBLE_DEVICES=1 .venv/bin/python experiments/exp11_train_lm.py --archs ll1_l2,ll1_l16 \
+  --seeds 0 --max_tokens 100000000 --results_dir results/sprint_lm
+CUDA_VISIBLE_DEVICES=0 .venv/bin/python experiments/exp11_train_lm.py --archs ll1_l1,ll1_l8 \
+  --seeds 0 --max_tokens 100000000 --results_dir results/sprint_lm
+
+# mechanism probe + figures
+CUDA_VISIBLE_DEVICES=1 .venv/bin/python experiments/exp20b_tucker_mechanism.py
+.venv/bin/python scripts/make_lm_summary.py
+.venv/bin/python scripts/make_interp_figures.py
+.venv/bin/python scripts/make_fig1_diagram.py
+
+# paper
+~/.local/bin/tectonic paper/main.tex
+```

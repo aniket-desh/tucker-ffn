@@ -112,12 +112,12 @@ warm-start, core wd=0) — all at 2.293M ± 0.2% FFN params/layer, d=512, 8 laye
 | exp | what | status |
 |---|---|---|
 | exp18 | synthetic teacher-student, 3 teachers × 7 students × 3 seeds + budget sweep | done |
-| exp11/sprint_lm | 52.5M-param LMs, 100M FineWeb-Edu tokens, 3 seeds headline + L-sweep | running |
-| exp19 | interp proxies: eff-active, mass90, stable rank, top-k decomposability, ablation locality | pending ckpts |
-| exp20/20b | induction pilot (6 archs × 3 seeds) + tucker mechanism probe | 20 done / 20b running |
-| exp21 | Qwen2.5-0.5B FFN distillation, 3 layers × 3 budgets × 7 archs × 2 seeds | running |
-| exp22 | factor stability across seeds | pending ckpts |
-| throughput | tokens/sec fwd + train, idle GPU | pending |
+| exp11/sprint_lm | 52.5M-param LMs, 100M FineWeb-Edu tokens, 3 seeds headline + L-sweep | done |
+| exp19 | interp proxies: eff-active, mass90, stable rank, top-k decomposability, ablation locality | done |
+| exp20/20b | induction pilot (6 archs × 3 seeds) + tucker mechanism probe | done |
+| exp21 | Qwen2.5-0.5B FFN distillation, 3 layers × 3 budgets × 7 archs × 2 seeds | done |
+| exp22 | factor stability across seeds | done |
+| throughput | tokens/sec fwd + train, idle GPU | done |
 
 ## 8. Results
 
