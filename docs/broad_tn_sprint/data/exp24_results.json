@@ -1,0 +1,404 @@
+[
+  {
+    "topology": "random",
+    "arch": "swiglu",
+    "seed": 0,
+    "meta": {
+      "m": 48
+    },
+    "rel_mse": 0.6046558063017896,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.31790680112317204,
+    "n_atoms": 48,
+    "causal_specificity": null
+  },
+  {
+    "topology": "random",
+    "arch": "swiglu",
+    "seed": 1,
+    "meta": {
+      "m": 48
+    },
+    "rel_mse": 0.6060001245890585,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.3140342589467764,
+    "n_atoms": 48,
+    "causal_specificity": null
+  },
+  {
+    "topology": "random",
+    "arch": "swiglu",
+    "seed": 2,
+    "meta": {
+      "m": 48
+    },
+    "rel_mse": 0.6079472685608661,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.315181827172637,
+    "n_atoms": 48,
+    "causal_specificity": null
+  },
+  {
+    "topology": "random",
+    "arch": "swiglu_l1",
+    "seed": 0,
+    "meta": {
+      "m": 48
+    },
+    "rel_mse": 0.6029211206961783,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.31594465393573046,
+    "n_atoms": 48,
+    "causal_specificity": null
+  },
+  {
+    "topology": "random",
+    "arch": "swiglu_l1",
+    "seed": 1,
+    "meta": {
+      "m": 48
+    },
+    "rel_mse": 0.6053186975211118,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.31623285356909037,
+    "n_atoms": 48,
+    "causal_specificity": null
+  },
+  {
+    "topology": "random",
+    "arch": "swiglu_l1",
+    "seed": 2,
+    "meta": {
+      "m": 48
+    },
+    "rel_mse": 0.6084021007451529,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.3176055965013802,
+    "n_atoms": 48,
+    "causal_specificity": null
+  },
+  {
+    "topology": "random",
+    "arch": "ll1_l2",
+    "seed": 0,
+    "meta": {
+      "B": 29,
+      "L": 2
+    },
+    "rel_mse": 0.6037156399038341,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.31683908961713314,
+    "n_atoms": 58,
+    "causal_specificity": null
+  },
+  {
+    "topology": "random",
+    "arch": "ll1_l2",
+    "seed": 1,
+    "meta": {
+      "B": 29,
+      "L": 2
+    },
+    "rel_mse": 0.6155408660910464,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.30439535854384303,
+    "n_atoms": 58,
+    "causal_specificity": null
+  },
+  {
+    "topology": "random",
+    "arch": "ll1_l2",
+    "seed": 2,
+    "meta": {
+      "B": 29,
+      "L": 2
+    },
+    "rel_mse": 0.6238448676170865,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.2720141283934936,
+    "n_atoms": 58,
+    "causal_specificity": null
+  },
+  {
+    "topology": "random",
+    "arch": "ll1_l4",
+    "seed": 0,
+    "meta": {
+      "B": 16,
+      "L": 4
+    },
+    "rel_mse": 0.6858404769672723,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.2362971112015657,
+    "n_atoms": 64,
+    "causal_specificity": null
+  },
+  {
+    "topology": "random",
+    "arch": "ll1_l4",
+    "seed": 1,
+    "meta": {
+      "B": 16,
+      "L": 4
+    },
+    "rel_mse": 0.6769480795629013,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.23547530634095892,
+    "n_atoms": 64,
+    "causal_specificity": null
+  },
+  {
+    "topology": "random",
+    "arch": "ll1_l4",
+    "seed": 2,
+    "meta": {
+      "B": 16,
+      "L": 4
+    },
+    "rel_mse": 0.6809762244893051,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.21313511834159726,
+    "n_atoms": 64,
+    "causal_specificity": null
+  },
+  {
+    "topology": "random",
+    "arch": "tucker",
+    "seed": 0,
+    "meta": {
+      "r": 17
+    },
+    "rel_mse": 0.735380347988268,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.06851508986619592,
+    "n_atoms": 68,
+    "causal_specificity": null
+  },
+  {
+    "topology": "random",
+    "arch": "tucker",
+    "seed": 1,
+    "meta": {
+      "r": 17
+    },
+    "rel_mse": 0.7433264199310584,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.06603254016226856,
+    "n_atoms": 68,
+    "causal_specificity": null
+  },
+  {
+    "topology": "random",
+    "arch": "tucker",
+    "seed": 2,
+    "meta": {
+      "r": 17
+    },
+    "rel_mse": 0.732220865664018,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.06542786313912075,
+    "n_atoms": 68,
+    "causal_specificity": null
+  },
+  {
+    "topology": "hub",
+    "arch": "swiglu",
+    "seed": 0,
+    "meta": {
+      "m": 48
+    },
+    "rel_mse": 0.6047704362915022,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.20288597187027335,
+    "n_atoms": 48,
+    "causal_specificity": null
+  },
+  {
+    "topology": "hub",
+    "arch": "swiglu",
+    "seed": 1,
+    "meta": {
+      "m": 48
+    },
+    "rel_mse": 0.6060507387694514,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.2679307106882334,
+    "n_atoms": 48,
+    "causal_specificity": null
+  },
+  {
+    "topology": "hub",
+    "arch": "swiglu",
+    "seed": 2,
+    "meta": {
+      "m": 48
+    },
+    "rel_mse": 0.6035396847756557,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.23564929491840303,
+    "n_atoms": 48,
+    "causal_specificity": null
+  },
+  {
+    "topology": "hub",
+    "arch": "swiglu_l1",
+    "seed": 0,
+    "meta": {
+      "m": 48
+    },
+    "rel_mse": 0.6043479553503359,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.20319417817518115,
+    "n_atoms": 48,
+    "causal_specificity": null
+  },
+  {
+    "topology": "hub",
+    "arch": "swiglu_l1",
+    "seed": 1,
+    "meta": {
+      "m": 48
+    },
+    "rel_mse": 0.6056257212909394,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.2692539105191827,
+    "n_atoms": 48,
+    "causal_specificity": null
+  },
+  {
+    "topology": "hub",
+    "arch": "swiglu_l1",
+    "seed": 2,
+    "meta": {
+      "m": 48
+    },
+    "rel_mse": 0.6034678948698473,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.23653650493361056,
+    "n_atoms": 48,
+    "causal_specificity": null
+  },
+  {
+    "topology": "hub",
+    "arch": "ll1_l2",
+    "seed": 0,
+    "meta": {
+      "B": 29,
+      "L": 2
+    },
+    "rel_mse": 0.5992351808999445,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.24730818206444383,
+    "n_atoms": 58,
+    "causal_specificity": null
+  },
+  {
+    "topology": "hub",
+    "arch": "ll1_l2",
+    "seed": 1,
+    "meta": {
+      "B": 29,
+      "L": 2
+    },
+    "rel_mse": 0.5996307627473979,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.2477470978628844,
+    "n_atoms": 58,
+    "causal_specificity": null
+  },
+  {
+    "topology": "hub",
+    "arch": "ll1_l2",
+    "seed": 2,
+    "meta": {
+      "B": 29,
+      "L": 2
+    },
+    "rel_mse": 0.6037693888785461,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.2288256788160652,
+    "n_atoms": 58,
+    "causal_specificity": null
+  },
+  {
+    "topology": "hub",
+    "arch": "ll1_l4",
+    "seed": 0,
+    "meta": {
+      "B": 16,
+      "L": 4
+    },
+    "rel_mse": 0.5912188970380559,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.2813192652538419,
+    "n_atoms": 64,
+    "causal_specificity": null
+  },
+  {
+    "topology": "hub",
+    "arch": "ll1_l4",
+    "seed": 1,
+    "meta": {
+      "B": 16,
+      "L": 4
+    },
+    "rel_mse": 0.5892489513482699,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.2561772237531841,
+    "n_atoms": 64,
+    "causal_specificity": null
+  },
+  {
+    "topology": "hub",
+    "arch": "ll1_l4",
+    "seed": 2,
+    "meta": {
+      "B": 16,
+      "L": 4
+    },
+    "rel_mse": 0.5952910422950496,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.2533767414279282,
+    "n_atoms": 64,
+    "causal_specificity": null
+  },
+  {
+    "topology": "hub",
+    "arch": "tucker",
+    "seed": 0,
+    "meta": {
+      "r": 17
+    },
+    "rel_mse": 0.6716096700826156,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.07566105472506024,
+    "n_atoms": 68,
+    "causal_specificity": null
+  },
+  {
+    "topology": "hub",
+    "arch": "tucker",
+    "seed": 1,
+    "meta": {
+      "r": 17
+    },
+    "rel_mse": 0.6674547629210622,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.07585468498291448,
+    "n_atoms": 68,
+    "causal_specificity": null
+  },
+  {
+    "topology": "hub",
+    "arch": "tucker",
+    "seed": 2,
+    "meta": {
+      "r": 17
+    },
+    "rel_mse": 0.6712907742479403,
+    "recovery_rate": 0.0,
+    "mean_matched_score": 0.0517114574322477,
+    "n_atoms": 68,
+    "causal_specificity": null
+  }
+]

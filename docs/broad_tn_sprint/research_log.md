@@ -134,3 +134,17 @@ the teacher (0.28-0.31 vs 0.19); sparse-CP ≈ plain CP; LL1 slightly less selec
 
 Queued on GPU0: sparse_swiglu (route_l1 1e-3), sparse_ll1 (group_lasso 1e-3),
 struct_monarch4 — 100M tokens each.
+
+## T+5:50 — Efficiency-axis verdict complete; sparse λ-bracket landing
+
+- **Monarch end-to-end: negative.** LM at matched params/FLOPs (m=5844): val 4.797
+  vs dense 4.751±0.016 — worse by ~3σ — AND 2.6× slower in the idle-GPU train bench
+  (27.1K vs 69.4K tok/s; blockdiag 52.6K; ll1 73.0K). Monarch's per-parameter
+  approximation win (distillation, 3/4 cells) does NOT survive end-to-end training
+  wall-clock or loss at this scale in plain PyTorch. Structured params ≠ structured
+  speed without fused kernels; and the optimization landscape of width-via-structure
+  appears harder for LM training than for layer regression.
+- Butterfly (caveated, 1000-step): m=1024 at 0.82M params relMSE 0.632 ≈ dense-0.6M
+  at 4000 steps (0.625) — no efficiency win visible through the implementation fog.
+- sparse route-L1 λ=0.03: val 4.762 (inside swiglu band); eff-active analysis
+  running. λ=0.3 training.

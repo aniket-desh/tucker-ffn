@@ -1,0 +1,106 @@
+{
+  "layer": 12,
+  "teacher": {
+    "sel_cur_mean": 0.19003906250000002,
+    "sel_cur_p90": 0.35,
+    "sel_prev_mean": 0.15410156249999998,
+    "null_cur_mean": 0.09277343750000003
+  },
+  "students": {
+    "swiglu_student": {
+      "rel_mse": 0.4317770588002212,
+      "n_units": 446,
+      "sel_cur_mean": 0.3083984375,
+      "sel_cur_p90": 0.65,
+      "sel_prev_mean": 0.20761718750000002
+    },
+    "sparse_cp_student": {
+      "rel_mse": 0.4321002190703946,
+      "n_units": 446,
+      "sel_cur_mean": 0.3021484375,
+      "sel_cur_p90": 0.6,
+      "sel_prev_mean": 0.2220703125
+    },
+    "ll1_l4_student": {
+      "rel_mse": 0.4197017316123111,
+      "n_units": 149,
+      "sel_cur_mean": 0.2785234899328859,
+      "sel_cur_p90": 0.55,
+      "sel_prev_mean": 0.2221476510067114
+    }
+  },
+  "causal": [
+    {
+      "atom": 3830,
+      "selectivity": 1.0,
+      "local_dlogp": 0.10179236917756498,
+      "global_dlogp": -0.0015825795708224177
+    },
+    {
+      "atom": 444,
+      "selectivity": 0.9,
+      "local_dlogp": 0.005099475383758545,
+      "global_dlogp": -0.000513353943824768
+    },
+    {
+      "atom": 3592,
+      "selectivity": 0.8,
+      "local_dlogp": -0.0013529878109693528,
+      "global_dlogp": -0.0006924740038812161
+    },
+    {
+      "atom": 239,
+      "selectivity": 0.65,
+      "local_dlogp": -0.00697379931807518,
+      "global_dlogp": 0.0015515313483774663
+    },
+    {
+      "atom": 4233,
+      "selectivity": 0.6,
+      "local_dlogp": 0.030776213026709028,
+      "global_dlogp": 0.0006334715522825718
+    },
+    {
+      "atom": 3976,
+      "selectivity": 0.55,
+      "local_dlogp": 0.03321647644042969,
+      "global_dlogp": 0.00012812875211238862
+    },
+    {
+      "atom": 3102,
+      "selectivity": 0.5,
+      "local_dlogp": 0.10317760063335299,
+      "global_dlogp": 0.0011255934834480286
+    },
+    {
+      "atom": 2290,
+      "selectivity": 0.5,
+      "local_dlogp": 0.022139984741806985,
+      "global_dlogp": -0.0002468526363372803
+    },
+    {
+      "atom": 8,
+      "selectivity": 0.5,
+      "local_dlogp": -0.07344080805778504,
+      "global_dlogp": 0.0028290629386901857
+    },
+    {
+      "atom": 4757,
+      "selectivity": 0.45,
+      "local_dlogp": -0.013716846704483032,
+      "global_dlogp": 0.0002785493270494044
+    },
+    {
+      "atom": 240,
+      "selectivity": 0.45,
+      "local_dlogp": 0.01193858659826219,
+      "global_dlogp": 0.0020333848893642425
+    },
+    {
+      "atom": 2184,
+      "selectivity": 0.45,
+      "local_dlogp": 0.007038966612890362,
+      "global_dlogp": -0.0011197865009307862
+    }
+  ]
+}

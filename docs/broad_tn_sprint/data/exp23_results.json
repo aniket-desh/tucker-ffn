@@ -1,0 +1,398 @@
+[
+  {
+    "layer": 4,
+    "arch": "swiglu",
+    "budget": 600000,
+    "params": 599424,
+    "meta": {
+      "m": 223
+    },
+    "rel_mse_seeds": [
+      0.6246837795978667,
+      0.6246844994906459
+    ]
+  },
+  {
+    "layer": 4,
+    "arch": "swiglu_lowrank",
+    "budget": 600000,
+    "params": 599874,
+    "meta": {
+      "m": 446,
+      "rank": 149
+    },
+    "rel_mse_seeds": [
+      0.6444300185930307,
+      0.6445137661196741
+    ]
+  },
+  {
+    "layer": 4,
+    "arch": "swiglu_blockdiag4",
+    "budget": 600000,
+    "params": 599424,
+    "meta": {
+      "m": 892,
+      "nb": 4
+    },
+    "rel_mse_seeds": [
+      0.6483542141233485,
+      0.6480177842312166
+    ]
+  },
+  {
+    "layer": 4,
+    "arch": "swiglu_monarch4",
+    "budget": 600000,
+    "params": 599264,
+    "meta": {
+      "m": 876,
+      "nb": 4
+    },
+    "rel_mse_seeds": [
+      0.5974775316964291,
+      0.5980599849458421
+    ]
+  },
+  {
+    "layer": 4,
+    "arch": "ll1_l4",
+    "budget": 600000,
+    "params": 596736,
+    "meta": {
+      "B": 74,
+      "L": 4
+    },
+    "rel_mse_seeds": [
+      0.6029139819915221,
+      0.6023413672767578
+    ]
+  },
+  {
+    "layer": 4,
+    "arch": "ll1_l4_monarch4",
+    "budget": 600000,
+    "params": 555200,
+    "meta": {
+      "B": 204,
+      "L": 4,
+      "nb": 4
+    },
+    "rel_mse_seeds": [
+      0.6290703862566709,
+      0.6304395623315864
+    ]
+  },
+  {
+    "layer": 4,
+    "arch": "ll1_l4_blockdiag4",
+    "budget": 600000,
+    "params": 548352,
+    "meta": {
+      "B": 204,
+      "L": 4,
+      "nb": 4
+    },
+    "rel_mse_seeds": [
+      0.6367589611203307,
+      0.6365731088011751
+    ]
+  },
+  {
+    "layer": 4,
+    "arch": "swiglu",
+    "budget": 1200000,
+    "params": 1198848,
+    "meta": {
+      "m": 446
+    },
+    "rel_mse_seeds": [
+      0.5274822967867165,
+      0.5282761585489457
+    ]
+  },
+  {
+    "layer": 4,
+    "arch": "swiglu_lowrank",
+    "budget": 1200000,
+    "params": 1196172,
+    "meta": {
+      "m": 892,
+      "rank": 223
+    },
+    "rel_mse_seeds": [
+      0.8867033344053736,
+      0.5626754551177148
+    ]
+  },
+  {
+    "layer": 4,
+    "arch": "swiglu_blockdiag4",
+    "budget": 1200000,
+    "params": 1198848,
+    "meta": {
+      "m": 1784,
+      "nb": 4
+    },
+    "rel_mse_seeds": [
+      0.5790389179435614,
+      0.5785791464219319
+    ]
+  },
+  {
+    "layer": 4,
+    "arch": "swiglu_monarch4",
+    "budget": 1200000,
+    "params": 1197664,
+    "meta": {
+      "m": 1756,
+      "nb": 4
+    },
+    "rel_mse_seeds": [
+      0.5178572703381559,
+      0.5180176864457807
+    ]
+  },
+  {
+    "layer": 4,
+    "arch": "ll1_l4",
+    "budget": 1200000,
+    "params": 1201536,
+    "meta": {
+      "B": 149,
+      "L": 4
+    },
+    "rel_mse_seeds": [
+      0.5097362198874099,
+      0.5081522758000423
+    ]
+  },
+  {
+    "layer": 4,
+    "arch": "ll1_l4_monarch4",
+    "budget": 1200000,
+    "params": 1106816,
+    "meta": {
+      "B": 408,
+      "L": 4,
+      "nb": 4
+    },
+    "rel_mse_seeds": [
+      0.5481017657230132,
+      0.5472251162911795
+    ]
+  },
+  {
+    "layer": 4,
+    "arch": "ll1_l4_blockdiag4",
+    "budget": 1200000,
+    "params": 1096704,
+    "meta": {
+      "B": 408,
+      "L": 4,
+      "nb": 4
+    },
+    "rel_mse_seeds": [
+      0.5493902538155967,
+      0.5489544787199394
+    ]
+  },
+  {
+    "layer": 12,
+    "arch": "swiglu",
+    "budget": 600000,
+    "params": 599424,
+    "meta": {
+      "m": 223
+    },
+    "rel_mse_seeds": [
+      0.5299292628177633,
+      0.5293416330673987
+    ]
+  },
+  {
+    "layer": 12,
+    "arch": "swiglu_lowrank",
+    "budget": 600000,
+    "params": 599874,
+    "meta": {
+      "m": 446,
+      "rank": 149
+    },
+    "rel_mse_seeds": [
+      0.5637057013906761,
+      0.5631144972501024
+    ]
+  },
+  {
+    "layer": 12,
+    "arch": "swiglu_blockdiag4",
+    "budget": 600000,
+    "params": 599424,
+    "meta": {
+      "m": 892,
+      "nb": 4
+    },
+    "rel_mse_seeds": [
+      0.6107895351386387,
+      0.6106241004451307
+    ]
+  },
+  {
+    "layer": 12,
+    "arch": "swiglu_monarch4",
+    "budget": 600000,
+    "params": 599264,
+    "meta": {
+      "m": 876,
+      "nb": 4
+    },
+    "rel_mse_seeds": [
+      0.5020038627243526,
+      0.5023194218066398
+    ]
+  },
+  {
+    "layer": 12,
+    "arch": "ll1_l4",
+    "budget": 600000,
+    "params": 596736,
+    "meta": {
+      "B": 74,
+      "L": 4
+    },
+    "rel_mse_seeds": [
+      0.5075662096213053,
+      0.5073855837694089
+    ]
+  },
+  {
+    "layer": 12,
+    "arch": "ll1_l4_monarch4",
+    "budget": 600000,
+    "params": 555200,
+    "meta": {
+      "B": 204,
+      "L": 4,
+      "nb": 4
+    },
+    "rel_mse_seeds": [
+      0.5313863034133044,
+      0.5313837417669879
+    ]
+  },
+  {
+    "layer": 12,
+    "arch": "ll1_l4_blockdiag4",
+    "budget": 600000,
+    "params": 548352,
+    "meta": {
+      "B": 204,
+      "L": 4,
+      "nb": 4
+    },
+    "rel_mse_seeds": [
+      0.556953380419967,
+      0.5566303151182408
+    ]
+  },
+  {
+    "layer": 12,
+    "arch": "swiglu",
+    "budget": 1200000,
+    "params": 1198848,
+    "meta": {
+      "m": 446
+    },
+    "rel_mse_seeds": [
+      0.4340247395461001,
+      0.4347818549655429
+    ]
+  },
+  {
+    "layer": 12,
+    "arch": "swiglu_lowrank",
+    "budget": 1200000,
+    "params": 1196172,
+    "meta": {
+      "m": 892,
+      "rank": 223
+    },
+    "rel_mse_seeds": [
+      0.4825072917560264,
+      0.48179613703735474
+    ]
+  },
+  {
+    "layer": 12,
+    "arch": "swiglu_blockdiag4",
+    "budget": 1200000,
+    "params": 1198848,
+    "meta": {
+      "m": 1784,
+      "nb": 4
+    },
+    "rel_mse_seeds": [
+      0.5632925018825122,
+      0.5634366093811063
+    ]
+  },
+  {
+    "layer": 12,
+    "arch": "swiglu_monarch4",
+    "budget": 1200000,
+    "params": 1197664,
+    "meta": {
+      "m": 1756,
+      "nb": 4
+    },
+    "rel_mse_seeds": [
+      0.43477431895951885,
+      0.43469788658221575
+    ]
+  },
+  {
+    "layer": 12,
+    "arch": "ll1_l4",
+    "budget": 1200000,
+    "params": 1201536,
+    "meta": {
+      "B": 149,
+      "L": 4
+    },
+    "rel_mse_seeds": [
+      0.42193588377989383,
+      0.42146918756493473
+    ]
+  },
+  {
+    "layer": 12,
+    "arch": "ll1_l4_monarch4",
+    "budget": 1200000,
+    "params": 1106816,
+    "meta": {
+      "B": 408,
+      "L": 4,
+      "nb": 4
+    },
+    "rel_mse_seeds": [
+      0.4557941758885934,
+      0.4558501448819498
+    ]
+  },
+  {
+    "layer": 12,
+    "arch": "ll1_l4_blockdiag4",
+    "budget": 1200000,
+    "params": 1096704,
+    "meta": {
+      "B": 408,
+      "L": 4,
+      "nb": 4
+    },
+    "rel_mse_seeds": [
+      0.47937892587191294,
+      0.4794547327309294
+    ]
+  }
+]
