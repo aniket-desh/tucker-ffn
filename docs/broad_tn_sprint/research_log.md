@@ -53,3 +53,22 @@ any cost" and the sprint pivots to the route/atom scaling law. If Monarch/butter
 matches dense at half params AND real throughput parity, the efficiency axis becomes
 the headline. If SVD-canonicalized matching flips the LL1 stability result, sprint-1's
 interp negative was a measurement artifact and the interp story reopens.
+
+## T+0:55 — Modules built, first structured-factor result
+
+- lib/structured_linear.py (LowRank/BlockDiag/Monarch/Butterfly; dense-materialization
+  equality tests pass to 1e-6, mixing-pattern checks pass), lib/structured_ffn.py,
+  lib/sparsity.py (route_l1/contrib_l1/group_lasso with realized-sparsity logging),
+  lib/interp_metrics.py (SVD canonicalization verified rotation-invariant; CKA;
+  Procrustes; principal angles; local-vs-global ablation; pruning curves).
+- **Confound A algebraic half settled: LL1(B,L) == tied-gate SwiGLU(BL), 0 error**, and
+  LL1 is that model minus $d\,B(L-1)$ redundant gate params. The empirical half
+  (atom-matched m=1992 / route-matched m=498) is training on GPU0.
+- **First exp23 rows (Qwen layer 4, 0.6M budget): Monarch-SwiGLU 0.598 < dense
+  SwiGLU 0.625 < blockdiag 0.648** (2 seeds, ±0.0006). Monarch's 3.9× width at
+  matched params beats dense; pure block-diagonal (no mixing) is worse than dense —
+  mixing is load-bearing, exactly the Monarch-vs-blockdiag prediction.
+- Tucker fairness probes (30M tok): core-lr×2 = 5.483 (worse than the 5.28-ish
+  warm-start trajectory at 30M in sprint 1) — boosting core lr hurts. clr×0.5 next.
+- exp24 (superposition recovery) and exp25 (spectra) running; exp26 (Qwen contexts)
+  written.
