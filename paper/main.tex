@@ -794,4 +794,41 @@ largest-contribution units per token. Single-unit ablations zero one atom (SwiGL
 one block-gate (LL1), or one latent gate (Tucker; $\silu(0)=0$ removes the slice
 exactly) in one layer and re-evaluate full-model validation loss.
 
+\section{Additional results}
+\label{app:extra}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/exp18_budget.png}
+\caption{Synthetic recovery across student parameter budgets
+$\{0.25, 0.5, 1, 2\}\times 9216$ (mean over 3 seeds, band = seed range). The
+matched-structure advantage of Figure~\ref{fig:synthetic} persists at every budget;
+the dense Tucker student improves on non-Tucker teachers only marginally with budget
+because added parameters go into its core rather than into routes.}
+\label{fig:budget}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/exp20_curves.png}
+\caption{Induction pilot: second-half accuracy (left) and canonical induction score
+(right) versus training step (mean $\pm$ std over 3 seeds per architecture). All FFN
+variants learn the task at indistinguishable speed; the attention-only control is
+faster. The Tucker induction-score band is wide because one of its three seeds
+solves the task without the canonical attention pattern.}
+\label{fig:induction}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/exp20b_offsets.png}
+\caption{Layer-2 attention-offset profiles (mean attention mass from second-half
+query positions to each relative offset). Left: a representative SwiGLU run --- all
+heads concentrate on the canonical induction offset $|s|-1 = 63$ (mass
+$0.93$--$1.0$). Right: the anomalous Tucker seed --- attention is spread over
+non-canonical offsets (mass $\le 0.19$ per head), yet the model reaches $100\%$
+accuracy; ablating its best head changes nothing.}
+\label{fig:offsets}
+\end{figure}
+
 \end{document}

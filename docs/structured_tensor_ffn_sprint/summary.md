@@ -33,7 +33,7 @@ slower). Evidence: tie is solid; throughput differences are large and real.
 
 **4. Three independent measurements converge on per-route rank ≈ 4.** The
 unconstrained Tucker core, free to use rank 128, learns per-gate stable rank
-3.97/3.99 (fresh seeds, replicating the prior draft); LL1 capped at L=4 saturates to
+3.97/3.99/3.97 (three fresh seeds, replicating the prior draft); LL1 capped at L=4 saturates to
 3.26; the distillation optimum is L≈4–8. This is the sprint's cleanest structural
 fact: dense Tucker parameterizes ~91% of its budget for interactions it does not
 use. Evidence: positive, triangulated.
