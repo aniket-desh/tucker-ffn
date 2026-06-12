@@ -224,7 +224,7 @@ $\rank V_j = \min(r,s)$.
 
 Two properties make the dense core suspicious as an interpretability target. First,
 \emph{gauge freedom}: for any invertible $M \in \R^{r\times r}$, replacing $P \mapsto
-P M^{-\top}$ and $C^{(j)} \mapsto C^{(j)} M\T$ for all $j$ leaves the function
+P M^{-\top}$ and $C^{(j)} \mapsto C^{(j)} M$ for all $j$ leaves the function
 unchanged, so individual latent directions $p_i$ and individual core entries carry no
 intrinsic meaning --- only the gate directions $Q_{:j}$ and the subspaces
 $\mathrm{range}(V_j)$ are well defined. Second, the core costs $s r^2$ parameters; at
@@ -290,8 +290,10 @@ it is the question our experiments are designed to answer. A prior observation
 sharpens the stakes: in a dense Tucker LM trained from scratch, the learned per-gate
 stable rank $\|V_j\|_F^2/\|V_j\|_{\mathrm{op}}^2$ concentrates around $4$ --- far
 below the generic value $r$, far above the SwiGLU value $1$. The trained dense core
-already behaves like an LL1 model; LL1 makes that behavior an explicit, cheaper, and
-identifiable parameterization.
+already behaves like an LL1 model; LL1 makes that behavior an explicit and cheaper
+parameterization (with essential-uniqueness guarantees at the decomposition level,
+though \S\ref{sec:interp} shows these do not translate into cross-seed stability of
+learned factors).
 
 \begin{figure}[t]
 \centering
@@ -451,9 +453,10 @@ optimum away from the corners (single seeds: $L{=}1$: $4.765$ --- matching SwiGL
 range and confirming the $L{=}1\equiv$SwiGLU control end-to-end; $L{=}2$: $4.740$;
 $L{=}8$: $4.742$; $L{=}16$: $4.750$). Training throughput at matched FLOPs
 ($4.59{\times}10^6$ MACs/token/layer for every architecture): LL1 75.3K tokens/s,
-SwiGLU 71.4K, Tucker 36.5K --- LL1 is $5$--$7\%$ faster than SwiGLU (its gate GEMM is
-$2L{+}1$ smaller) and $2.06\times$ faster than Tucker, whose core contraction is
-GEMM-unfriendly.
+SwiGLU 71.4K, Tucker 36.5K --- LL1 is $5$--$7\%$ faster than SwiGLU (its gate
+projection is a factor $\tfrac{2L+1}{3}$ narrower, and the gating multiply touches
+$B$ rather than $m$ columns) and $2.06\times$ faster than Tucker, whose core
+contraction is GEMM-unfriendly.
 
 \textbf{Interpretation.} At this scale the route/atom trade is loss-neutral on
 language modeling: tripling per-route rank while tripling down on routes neither
@@ -518,7 +521,11 @@ apparently adds assignment freedom that atom-level CP does not have.
 
 \textbf{Caveat.} Proxies measure routing statistics and weight structure, not
 semantic legibility; no human or automated interpretation of atoms/blocks was
-attempted.
+attempted. The Tucker stable-rank value is conditional on the diagonal warm-start
+initialization (the only one that reaches SwiGLU-level loss; prior work on this
+codebase found random-init Tucker converges to stable rank $\approx 27$ at worse
+loss); the distillation knee and the LL1 cap-saturation pattern are
+initialization-independent corroborations.
 
 \begin{figure}[t]
 \centering
