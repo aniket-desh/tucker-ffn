@@ -228,8 +228,8 @@ def main():
 
     setup_plot_style()
     kinds = args.kinds.split(",")
-    colors = {"none": "gray", "swiglu": PALETTE["ablation"],
-              "ll1_l4": PALETTE["primary"], "tucker": PALETTE["accent"]}
+    colors = {"none": "gray", "swiglu": "#2c7fb8", "ll1_l1": "#74c476",
+              "ll1_l4": "#31a354", "ll1_l16": "#006d2c", "tucker": "#d7301f"}
     fig, axes = plt.subplots(1, 2, figsize=(9, 3.6))
     for kind in kinds:
         rows = [r for r in results if r["kind"] == kind]

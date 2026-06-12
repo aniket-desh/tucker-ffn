@@ -41,11 +41,11 @@ def offset_profile(model, inp, half_len):
     t = inp.shape[1]
     out = []
     for att in attns:                       # (b, h, t, t)
-        prof = torch.zeros(att.shape[1], t)
+        prof = torch.zeros(att.shape[1], t, device=att.device)
         for q in range(half_len, t):
             # attention to key j = offset q - j
             a = att[:, :, q, :q + 1].mean(0)             # (h, q+1)
-            offs = q - torch.arange(q + 1)
+            offs = q - torch.arange(q + 1, device=att.device)
             prof[:, offs] += a
         prof /= (t - half_len)
         out.append(prof)

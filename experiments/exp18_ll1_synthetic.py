@@ -212,6 +212,7 @@ def main():
                              sharey=True)
     if len(teachers) == 1:
         axes = [axes]
+    C_CP, C_LL1, C_TK = "#2c7fb8", "#31a354", "#d7301f"
     for ax, t in zip(axes, teachers):
         rows = [r for r in results if r["teacher"] == t and r["tag"] == "lsweep"]
         xs, means, mins, maxs = [], [], [], []
@@ -225,16 +226,18 @@ def main():
         order = np.argsort(xs)
         xs = np.array(xs)[order]; means = np.array(means)[order]
         mins = np.array(mins)[order]; maxs = np.array(maxs)[order]
-        ax.plot(xs, means, "o-", color=PALETTE["primary"], label="LL1 student")
-        ax.fill_between(xs, mins, maxs, color=PALETTE["primary"], alpha=0.2)
+        # plot best-of-seeds as the primary line (representational capacity, as
+        # in exp10); band spans min-max across seeds
+        ax.plot(xs, mins, "o-", color=C_LL1, label="LL1 student (best of 3)")
+        ax.fill_between(xs, mins, maxs, color=C_LL1, alpha=0.2)
         for r in rows:
             if r["arch"] == "swiglu":
                 arr = np.array(r["rel_mse_seeds"])
-                ax.axhline(arr.mean(), color=PALETTE["ablation"], ls="--",
+                ax.axhline(arr.min(), color=C_CP, ls="--",
                            label=f"SwiGLU (m={r['meta']['m']})")
             if r["arch"] == "tucker":
                 arr = np.array(r["rel_mse_seeds"])
-                ax.axhline(arr.mean(), color=PALETTE["accent"], ls=":",
+                ax.axhline(arr.min(), color=C_TK, ls=":",
                            label=f"Tucker (r={r['meta']['r']})")
         if t == "ll1_l4":
             ax.axvline(4, color="gray", lw=0.8, ls="-.")
@@ -254,8 +257,7 @@ def main():
                              sharey=True)
     if len(teachers) == 1:
         axes = [axes]
-    colors = {"swiglu": PALETTE["ablation"], "ll1_l4": PALETTE["primary"],
-              "tucker": PALETTE["accent"]}
+    colors = {"swiglu": "#2c7fb8", "ll1_l4": "#31a354", "tucker": "#d7301f"}
     for ax, t in zip(axes, teachers):
         for arch in args.budget_archs.split(","):
             rows = [r for r in results if r["teacher"] == t and r["arch"] == arch]

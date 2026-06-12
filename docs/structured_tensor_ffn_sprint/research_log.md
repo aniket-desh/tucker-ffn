@@ -74,3 +74,41 @@ Sprint start (UTC): **2026-06-12T03:22Z**. Hard ceiling 24h → must stop by 202
 - Fig 1 ladder diagram drafted; paper theory+appendix+related work compile.
 - Queued: exp21 (Qwen distillation) on GPU0 when exp18 ends; throughput bench when a
   GPU is fully idle; exp19/exp22 when LM checkpoints land.
+
+## T+4:00 — Distillation pattern + tucker circuit anomaly mechanism
+
+- exp21 (Qwen2.5-0.5B layer 4, budgets 0.6M/1.2M): LL1 L≥2 consistently beats CP
+  (relMSE 0.601-0.609 vs 0.625 at 0.6M; 0.511-0.513 vs 0.528 at 1.2M), saturating
+  ~L=4-8. Tucker clearly worst (0.74 / 0.71). Seed pairs nearly identical (±0.001) so
+  the ~0.02-0.04 gaps are far above noise. Real FFN maps prefer small per-route rank
+  >1; dense core wastes compression budget. Layers 12, 20 pending.
+- exp20b first probe (tucker seed0, the ind=0.34 anomaly): FFN-bypass collapses
+  accuracy 1.00 → 0.03, while ablating the best layer-2 "induction head" leaves 1.00.
+  The anomalous Tucker model implements copying through its FFN rather than through a
+  canonical induction attention head. Other seeds + swiglu control pending.
+- exp18 final figures regenerated with best-of-seed lines + consistent colors.
+- LM: swiglu seed0 done 4.7626 (prior work 4.758 ✓). seed1 at 28M; tucker seed0 48M.
+
+## T+4:45 — exp20b complete (induction mechanism probe)
+
+- FFN-bypass collapses ALL architectures (swiglu 0.13, tucker 0.03-0.22 accuracy) —
+  off-distribution intervention, not tucker-specific. Lesson logged: FFN-bypass is not
+  a clean circuit test when models train jointly.
+- The architecture-specific finding survives: tucker seed0 reaches 100% accuracy with
+  NO canonical induction head (its L2 heads attend at diffuse offsets 54-56/37-44 with
+  mass ~0.1-0.2, vs mass 0.93-1.00 at exactly offset 63 for every other run incl.
+  tucker s1/s2). Best-head ablation leaves it at 100%. One of three seeds; suggestive
+  existence proof that the dense-core FFN admits an alternative copying basin.
+- exp20 phase closed: emergence-speed null + this single-seed anomaly.
+
+## T+5:20 — exp21 complete (Qwen distillation)
+
+Robust ordering across all 9 (layer × budget) cells, 2 seeds each (seed var ±0.001):
+LL1(L=4-16) < LL1(L=2) < CP=LL1(L=1)=SwiGLU << dense Tucker. Gains of LL1 over CP:
+2-4% relMSE consistently; Tucker worse by 35-130% relMSE and non-improving (sometimes
+worsening) with budget — its core spends the compression budget on interactions the
+real map doesn't need, and optimization at r needed for 2.4M params (r~? ) is hard.
+The L-knee at ~4-8 matches the prior trained-Tucker stable-rank ρ̄≈4. ll1_l1 ≡ swiglu
+within 0.001 in every cell (implementation control).
+Interpretation: real pretrained FFN input-output maps contain routed low-rank block
+structure; per-route rank ~4-8 captures it at matched compression budget.

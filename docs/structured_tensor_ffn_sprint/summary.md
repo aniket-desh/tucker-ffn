@@ -100,7 +100,33 @@ real LM computation.
 ### 8.2 LM training (exp11) — [PENDING; swiglu seed0 = 4.763 final val loss,
 reproducing prior 4.758]
 
-### 8.3 Real-layer distillation (exp21) — [PENDING]
+### 8.3 Real-layer distillation (exp21): real FFN maps prefer small per-route rank > 1
+
+Distilling Qwen2.5-0.5B FFN layers {4, 12, 20} (13.07M params each) into students at
+{0.6, 1.2, 2.4}M-param compression budgets (rel. val MSE, mean of 2 seeds, seed spread
+±0.001):
+
+| layer, budget | SwiGLU | LL1 L=2 | LL1 L=4 | LL1 L=8 | LL1 L=16 | Tucker |
+|---|---|---|---|---|---|---|
+| L4, 0.6M | .6247 | .6088 | .6026 | **.6008** | .6010 | .7372 |
+| L4, 2.4M | .4292 | .4135 | **.4077** | .4083 | .4145 | .7247 |
+| L12, 0.6M | .5296 | .5121 | .5075 | .5051 | **.5044** | .6706 |
+| L12, 2.4M | .3611 | .3496 | **.3475** | .3474 | .3497 | .6418 |
+| L20, 0.6M | .4411 | .4300 | .4278 | .4262 | **.4253** | .6403 |
+| L20, 2.4M | .3172 | .3120 | .3074 | **.3043** | .3046 | .7179 |
+
+(full 9-cell grid in data/exp21_results.json; ll1_l1 ≡ swiglu within ±0.001 in every
+cell — implementation control.)
+
+The ordering LL1(L≈4–16) < LL1(2) < CP ≪ dense Tucker holds in all nine cells. The
+LL1-over-CP gain is modest (2–4% relMSE) but ~30× the seed noise and monotone in the
+expected direction, with a shallow optimum at L≈4–8 — matching the per-gate stable
+rank ρ̄≈4 that a from-scratch dense-Tucker LM converged to in prior work. Dense Tucker
+is worse by 35–130% relMSE and does not improve (layer 20: worsens) with budget: at
+these budgets its core forces r so low (and its optimization is hard enough) that
+expressivity-as-superset never materializes. Caveat: this is the compression regime
+(students 4.6–18.4% of teacher size); it measures the structure of the teacher's
+function, not end-to-end trainability.
 
 ### 8.4 Interpretability proxies (exp19/exp22) — [PENDING]
 
