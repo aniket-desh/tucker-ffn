@@ -148,3 +148,16 @@ struct_monarch4 — 100M tokens each.
   at 4000 steps (0.625) — no efficiency win visible through the implementation fog.
 - sparse route-L1 λ=0.03: val 4.762 (inside swiglu band); eff-active analysis
   running. λ=0.3 training.
+
+## T+6:50 (23:20 UTC) — All experiments complete; summary finalized
+
+- Exp C final: route-L1 λ=0.3 → loss 4.719 (best d=512 run either sprint, single
+  seed) but eff-active INCREASED to 0.538/803 — strong penalties regularize without
+  sparsifying. Gauge-invariant contrib-L1 λ=0.03: loss 4.751, eff-active unchanged.
+  Across 3 penalty designs × 300× λ range: trained activation sparsity never
+  produced sparse routing. Identified the route-L1 gauge evasion (gate/up rescale)
+  as a structural cause and closed it — still no sparsification.
+- summary.md complete: exec summary, all sections, 15-question red-team answered.
+- Wall time: 6h50m of the 24h budget. 14 LM runs (8 full 100M + 3 probes + 3
+  sparse), 3 superposition regimes, 2 distillation sweeps, spectra, Qwen contexts,
+  throughput bench.

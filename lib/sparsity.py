@@ -71,12 +71,16 @@ class SparsityManager:
         if isinstance(ffn, LL1FFN):
             shape = up.shape[:-1]
             h = up.view(*shape, ffn.n_blocks, ffn.block_rank) * s.unsqueeze(-1)
+            # gauge-invariant: weight block contributions by ||U_b||_F
+            U = ffn.down_proj.weight.T.view(ffn.n_blocks, ffn.block_rank, ffn.d)
+            u_scale = U.norm(dim=(1, 2))
             if self.mode == "group_lasso":
-                self._terms.append(h.norm(dim=-1).mean())
+                self._terms.append((h.norm(dim=-1) * u_scale).mean())
             else:
-                self._terms.append(h.abs().mean())
-        else:  # SwiGLU: h = up * silu(gate)
-            self._terms.append((up * s).abs().mean())
+                self._terms.append((h.abs() * u_scale.unsqueeze(-1)).mean())
+        else:  # SwiGLU: gauge-invariant contribution |h_j| * ||u_j||
+            u_norm = ffn.down_proj.weight.norm(dim=0)
+            self._terms.append(((up * s).abs() * u_norm).mean())
 
     def reset(self):
         self._terms = []
