@@ -210,9 +210,18 @@ def train_one(arch, seed, args, device, val_inp, val_tgt, tokenizer,
     log("info", f"max_steps={max_steps} | tokens_per_step={n_tokens_per_batch} | "
         f"eval_every={eval_every} steps")
 
+    sparsity_mgr = None
+    if getattr(args, "sparsity", None):
+        from lib.sparsity import SparsityManager
+        sparsity_mgr = SparsityManager(model, mode=args.sparsity)
+        log("info", f"sparsity penalty: {args.sparsity} "
+            f"lambda={args.sparsity_lambda}")
+
     cfg_dump = {
         "arch": arch,
         "seed": seed,
+        "sparsity": getattr(args, "sparsity", None),
+        "sparsity_lambda": getattr(args, "sparsity_lambda", 0.0),
         "d": args.d, "n_heads": args.n_heads, "n_layers": args.n_layers,
         "vocab_size": args.vocab_size, "seq_len": args.seq_len,
         "swiglu_m": args.swiglu_m,
@@ -255,8 +264,12 @@ def train_one(arch, seed, args, device, val_inp, val_tgt, tokenizer,
             )
             inp, tgt = next(data_iter)
 
+        if sparsity_mgr is not None:
+            sparsity_mgr.reset()
         with torch.amp.autocast(device_type=device, dtype=torch.bfloat16):
             _, loss = model(inp, targets=tgt)
+            if sparsity_mgr is not None:
+                loss = loss + args.sparsity_lambda * sparsity_mgr.penalty()
         opt.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -386,6 +399,9 @@ def main():
                              "needed for exact reproduction of "
                              "results/exp11/tucker_seed0/ and the early "
                              "hill-climb runs (results/exp11_hc{,_v2}/).")
+    parser.add_argument("--sparsity", type=str, default=None,
+                        help="route_l1 | contrib_l1 | group_lasso")
+    parser.add_argument("--sparsity_lambda", type=float, default=0.0)
     parser.add_argument("--warmup_steps", type=int, default=200)
     parser.add_argument("--eval_every_tokens", type=int, default=2_000_000)
     parser.add_argument("--n_val_seqs", type=int, default=128)
