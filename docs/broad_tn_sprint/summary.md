@@ -70,16 +70,29 @@ matched FLOPs). There is no LL1-specific representational advantage on language 
 
 ## 7. Experiment B: structured factor matrices
 
-Qwen2.5-0.5B FFN distillation (rel. val MSE, 2 seeds, spread ±0.001), layer 4 at
-0.6M params: **Monarch 0.598 < dense 0.625 < block-diagonal 0.648**; low-rank
-[0.754 at smoke scale — final numbers pending exp23b]; butterfly: too slow in our
-PyTorch implementation to run at full steps (caveated short-run number pending).
-[FULL exp23b TABLE + LM run for monarch PENDING]
+Qwen2.5-0.5B FFN distillation (rel. val MSE, 2 seeds, spread ±0.001):
 
-Early reading: width-via-structure beats dense at matched budget when the structure
-mixes globally (Monarch); block-diagonal (no mixing) is worse than dense — mixing,
-not just width, is load-bearing. This is the first positive evidence for Thomas's
-efficiency axis in this project.
+| layer, budget | dense | low-rank | blockdiag4 | **monarch4** | ll1_l4 | ll1+monarch | ll1+blockdiag |
+|---|---|---|---|---|---|---|---|
+| L4, 0.6M | .6247 | .6445 | .6482 | **.5978** | .6026 | .6298 | .6367 |
+| L4, 1.2M | .5279 | .7247 | .5788 | .5179 | **.5089** | .5477 | .5492 |
+| L12, 0.6M | .5296 | .5634 | .6107 | **.5022** | .5075 | .5314 | .5568 |
+| L12, 1.2M | .4344 | .4822 | .5634 | .4347 | **.4217** | .4558 | .4794 |
+
+Four findings. (1) **Monarch-SwiGLU beats dense SwiGLU in 3 of 4 cells** (ties the
+4th): width-via-structure wins when the structure mixes globally. (2)
+Block-diagonal (no cross-block mixing) and low-rank are *always worse* than dense —
+mixing is load-bearing and projection-rank constraints hurt (a contrast with the
+LoRA intuition that low rank suffices for *updates*). (3) Core structure (LL1) and
+factor structure (Monarch) deliver comparable, alternating wins — they are different
+routes to the same width economy. (4) **Stacking them (LL1+Monarch) hurts** (0.55 vs
+0.51): the constraints compound. Butterfly: our stage-loop PyTorch implementation is
+latency-bound (~2 s/step at $d{=}896$) and was dropped from full runs — an
+implementation failure, not a verdict on the concept (caveated short-run only).
+Wall-clock caveat: in LM training the Monarch model at $m{=}5844$ runs at ~1.75
+s/step vs SwiGLU's 0.43 — at matched FLOPs the wide-but-structured model is
+$4	imes$ slower in our PyTorch implementation; structured params ≠ structured
+speed without fused kernels. [Monarch LM loss + idle-GPU bench pending.]
 
 ## 8. Experiment C: trained sparsity — [LM RUNS IN FLIGHT]
 
