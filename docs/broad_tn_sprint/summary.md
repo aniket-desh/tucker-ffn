@@ -91,7 +91,7 @@ latency-bound (~2 s/step at $d{=}896$) and was dropped from full runs — an
 implementation failure, not a verdict on the concept (caveated short-run only).
 Wall-clock caveat: in LM training the Monarch model at $m{=}5844$ runs at ~1.75
 s/step vs SwiGLU's 0.43 — at matched FLOPs the wide-but-structured model is
-$4	imes$ slower in our PyTorch implementation; structured params ≠ structured
+$4\times$ slower in our PyTorch implementation; structured params ≠ structured
 speed without fused kernels. [Monarch LM loss + idle-GPU bench pending.]
 
 ## 8. Experiment C: trained sparsity — [LM RUNS IN FLIGHT]
