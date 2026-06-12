@@ -293,7 +293,21 @@ below the generic value $r$, far above the SwiGLU value $1$. The trained dense c
 already behaves like an LL1 model; LL1 makes that behavior an explicit, cheaper, and
 identifiable parameterization.
 
-% TABLE: matched configs (B, L, atoms, routes) at d=512 budget 2.293M.
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig1_ladder.pdf}
+\caption{The architecture family, indexed by per-route rank. \textbf{A)} A SwiGLU
+channel: two projections of the residual stream are multiplied and scaled by the
+route $\alpha_j(x) = \sigma(g_j\T x)$; the channel contributes the rank-one atom
+$u_j \otimes w_j \otimes g_j$. \textbf{B)} An LL1 block: one route scales a rank-$L$
+bundle $V_b = U_b A_b\T$ of interactions ($L$ atoms sharing a gate). \textbf{C)}
+A dense Tucker core couples every latent main feature to every latent gate; each of
+its $r$ routes carries a generically full-rank $V_j$, and the latent basis is not
+identifiable. \textbf{D)} At a fixed parameter budget the family trades routes
+against per-route rank (rectangles drawn to scale for the LM configuration of
+Table~\ref{tab:configs}; area $\propto$ interaction atoms).}
+\label{fig:ladder}
+\end{figure}
 
 \section{Experiments}
 \label{sec:experiments}

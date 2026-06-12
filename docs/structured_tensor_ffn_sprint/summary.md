@@ -1,9 +1,59 @@
 # Structured tensor-network FFNs: sprint summary
 
-> STATUS: in progress — LM / interp / distillation sections pending their runs.
+## 1. Executive summary
 
-## 1. Executive summary (≤600 words)
-[TO FILL LAST]
+This sprint asked which tensor-network structure a transformer FFN should have, using
+the exact observation that SwiGLU is a routed CP tensor model (rank-one interaction
+atoms gated by sigmoid routes) and Thomas Dooms's critique that dense Tucker — the
+prior draft's proposal — is unprincipled, while LL1/block-CP (one gate routes a
+rank-L block) is the structured relaxation worth testing. We implemented the LL1 FFN
+(exactly nesting SwiGLU at L=1 and block-sparse Tucker generally), and compared
+SwiGLU / LL1(L∈{1,2,4,8,16}) / dense Tucker at parameter- and FLOP-matched budgets
+(±0.2%) across four experiment families. Five findings:
+
+**1. Per-route rank is a real, bidirectionally binding capacity dial.** (Fig
+exp18_lsweep) In synthetic teacher-student recovery at fixed budget, students recover
+a routed tensor map to machine precision exactly when their block rank and route
+count both suffice; the error minimum sits exactly at the teacher's rank, and the
+"most expressive" dense core loses every cross-class comparison because its core
+consumes the budget that buys routes. Evidence: positive, strong (3 seeds, 1e-13
+recovery floors).
+
+**2. Real pretrained FFN functions contain routed low-rank block structure with
+rank ≈ 4–8.** (Fig exp21_distill) Compressing Qwen2.5-0.5B FFN layers, LL1(L=4–16)
+beats rank-one atoms in all nine layer×budget cells (~30× seed noise; 2–4% relMSE)
+and dense Tucker loses by 35–130%. Evidence: positive, robust, modest effect size.
+
+**3. At LM scale the route/atom trade is loss-neutral — and LL1 is faster.** (Table
+lm_final, Fig lm_curves) From-scratch 52.5M-param/100M-token training: LL1(L=4)
+4.7472±0.0041 vs SwiGLU 4.7542±0.0104 (tie, t≈1.1) vs Tucker 4.7623±0.0072 (LL1
+ahead, t≈3.1); L-sweep flat with a shallow dip at L=4–8 (L=1: 4.765, L=8: 4.742).
+Throughput at matched FLOPs: LL1 75K tok/s > SwiGLU 71K > Tucker 36.5K (2.06×
+slower). Evidence: tie is solid; throughput differences are large and real.
+
+**4. Three independent measurements converge on per-route rank ≈ 4.** The
+unconstrained Tucker core, free to use rank 128, learns per-gate stable rank
+3.97/3.99 (fresh seeds, replicating the prior draft); LL1 capped at L=4 saturates to
+3.26; the distillation optimum is L≈4–8. This is the sprint's cleanest structural
+fact: dense Tucker parameterizes ~91% of its budget for interactions it does not
+use. Evidence: positive, triangulated.
+
+**5. The interpretability hypothesis failed.** (Fig interp_topk) No architecture
+routes sparsely (49–64% of units effectively active per token); single-unit ablations
+are negligible everywhere; and under a gauge-invariant cross-seed matching test,
+SwiGLU atoms (3.0× null) and even Tucker slices (1.6×) recur weakly across seeds
+while LL1 blocks are at chance. Structured ≠ stable ≠ legible. The induction-circuit
+pilot adds a clean null (emergence speed identical across all FFNs) plus a one-seed
+existence proof of an alternative dense-core copying circuit (diffuse attention +
+FFN, no canonical induction head). Evidence: negative results, honestly reported.
+
+**Verdict on the working hypothesis:** Success mode is closest to "LL1 is a real
+middle ground" on the *efficiency/structure* axes — it matches SwiGLU end-to-end
+while running faster and hard-coding the rank the computation actually uses — but
+Thomas's CPD-first instinct survives on the *interpretability* axis: atomized CP
+remains the most seed-stable, most truncatable decomposition, and nothing we measured
+says block structure makes mechanisms more accessible. Dense Tucker is dominated on
+every axis and should be retired as a proposal.
 
 ## 2. Research question
 
