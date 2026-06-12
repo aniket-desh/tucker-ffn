@@ -1,0 +1,1375 @@
+000
+001
+002
+003
+004
+005
+006
+007
+008
+009
+010
+011
+012
+013
+014
+015
+016
+017
+018
+019
+020
+021
+022
+023
+024
+025
+026
+027
+028
+029
+030
+031
+032
+033
+034
+035
+036
+037
+038
+039
+040
+041
+042
+043
+044
+045
+046
+047
+048
+049
+050
+051
+052
+053
+054
+SwiGLU as a Routed CP Tensor Model
+Anonymous Authors1
+Abstract
+Modern transformers spend much of their pa-
+rameter budget in SwiGLU feedforward blocks,
+but the structural bias of these blocks is less
+understood than that of attention. We show
+that SwiGLU admits an exact input-routed CP
+decomposition of a third-order interaction ten-
+sor field: each hidden unit contributes a fixed
+rank-one atom, routed by an input-dependent sig-
+moid gate. This view exposes a diagonal latent-
+core restriction, in which only same-index main
+and gate features interact. We relax this restric-
+tion with a Tucker-core FFN and prove an exact
+aligned-width separation: for fixed latent dictio-
+naries, representing a generic Tucker-core block
+with latent dimensions (r, s)requires rmin(r, s)
+SwiGLU units. Empirically, constant-gate abla-
+tions severely degrade pretrained Qwen models,
+synthetic teacher-student experiments recover the
+predicted width threshold, and post-hoc diago-
+nalization of a trained Tucker-core LM increases
+validation perplexity by 518×. Together, these re-
+sults identify SwiGLU as a routed low-rank tensor
+model with a concrete diagonal bottleneck.
+1. Introduction
+Attention admits multiple complementary structural in-
+terpretations: as Nadaraya–Watson kernel regression
+(Nadaraya, 1964; Pai, 2025), as a Boltzmann distribution
+over key-value pairs, and as a routing mechanism with tem-
+perature β=τ −1 that interpolates between diffuse averag-
+ing and sharp retrieval. The SwiGLU feedforward network
+(FFN) block (Shazeer, 2020), which holds the majority of
+a modern transformer’s parameters and empirically outper-
+forms ReLU/GELU FFNs at matched scale, lacks an analo-
+gous account of its structural bias. We apply tensor methods
+to fill this gap.
+1Anonymous Institution, Anonymous City, Anonymous Region,
+Anonymous Country. Correspondence to: Anonymous Author
+<anon.email@domain.com>.
+Preliminary work. Under review by the International Conference
+on Machine Learning (ICML). Do not distribute.
+At a fixed token position, let x∈R d denote the residual
+stream entering the FFN. SwiGLU computes
+y=U ⊤h, h= (W ⊤x)⊙SiLU(G ⊤x),(1)
+with W, G∈R d×m and U∈R m×d, so that U ⊤ ∈R d×m
+shares its shape with W and G; in the Tucker recovery set-
+ting of Section 3, the output factor takes the form R=U ⊤.
+Section 2 shows that this map is an exact input-routed CP
+decomposition of a third-order interaction tensor and that
+its same-index channel coupling is a structural restriction
+rather than an arbitrary parameterization choice; Section 3
+lifts this restriction via a Tucker-factorized generalization
+that recovers SwiGLU as a degenerate special case. Sec-
+tion 4 states the resulting separation theorem; Section 5
+tests whether pretrained SwiGLU models use the routed-CP
+structure and whether trained Tucker LMs use non-diagonal
+core structure that the aligned theorem identifies as costly.
+2. SwiGLU as a Routed CP Decomposition
+Writing the j-th columns of W and G as wj, gj ∈R d, the j-
+th hidden coordinate of (1) is hj(x) = (w⊤
+j x) SiLU(g⊤
+j x).
+The SiLU nonlinearity has an exact multiplicative factoriza-
+tion,
+SiLU(z) =z σ(z), σ(z) = (1 +e −z)−1,(2)
+so each hidden coordinate decomposes as
+hj(x) = (w ⊤
+j x)(g⊤
+j x)
+| {z }
+rank-one bilinear interaction
+·σ(g ⊤
+j x)
+| {z }
+αj (x)
+.(3)
+Each unit thus realizes a rank-one quadratic form
+x⊤(wjg⊤
+j )x between two learned directions, modulated by
+an input-dependent scalar gateα j(x)∈[0,1].
+Tensor form.Define the input-dependent interaction ten-
+sor A(x)∈R d×d×d by yo = P
+a,b Aoab(x)x axb. Substi-
+tuting (3) into the output projection yields
+A(x) =
+mX
+j=1
+αj(x)u j ⊗w j ⊗g j,(4)
+where uj is the j-th column of U ⊤ and αj(x) =σ(g ⊤
+j x) is
+therouting coefficientthat gates the j-th rank-one atom. We
+1
+
+=== PAGE BREAK ===
+
+055
+056
+057
+058
+059
+060
+061
+062
+063
+064
+065
+066
+067
+068
+069
+070
+071
+072
+073
+074
+075
+076
+077
+078
+079
+080
+081
+082
+083
+084
+085
+086
+087
+088
+089
+090
+091
+092
+093
+094
+095
+096
+097
+098
+099
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+SwiGLU as a Routed CP Tensor Model
+emphasise that A(x) is an input-dependenttensor field, not
+a fixed third-order tensor: (4) is a canonical polyadic (CP)
+decomposition (Kolda & Bader, 2009) of each A(x) with
+shared factor matrices (U ⊤, W, G)and input-dependent
+mixing weights αj(x), exact and pointwise in x. The two
+bilinear modes of A(x) are functionally symmetric under
+(a, b)→(b, a); the gate direction gj breaks this symmetry
+by enteringα j.
+Same-index restriction.The CP form (4) couples wj
+only with gj and uj, never with wk, gk, or uk for k̸=j .
+SwiGLU therefore realizes multiplicative feature mixing
+(Jayakumar et al., 2020) only through sums of rank-one
+separable factors with diagonal index pairing. Jayakumar
+et al. (2020) frame gating, attention, and hypernetworks as
+instances of multiplicative interaction; our contribution is
+the specific routed-CP / Tucker factorization the SwiGLU
+block admits and the aligned-width separation it implies.
+Equivalently: writing the layer as a Tucker decomposition
+(Kolda & Bader, 2009) with hidden dimension m and r=
+s=m , the core tensor must be superdiagonal,Coij =δ oiδij.
+Pearce et al. (2025) analyzetrainedbilinear MLPs (the
+αj ≡1 case) via eigendecomposition; the routed-CP form
+makes the gating part of the structural picture and reveals
+the diagonal restriction as a condition on the latent core, not
+on the residual stream.
+3. Tucker-Core FFN
+The natural relaxation of (4) is to drop the superdiagonal
+constraint on the latent core. We define theTucker-core
+FFNby latent projections P, Q∈R d×r, output projection
+R∈R d×s, and a learned core C ∈Rs×r×r. For p=P ⊤x
+andq=Q ⊤x, the block computes
+zo =
+rX
+i,j=1
+Coij pi SiLU(qj), y=Rz.(5)
+The same SiLU identity gives zo = P
+ij Coij σ(qj)p i qj, so
+the block still realizes an input-routed third-order interaction
+tensor; the routing is now controlled by the latent gate vector
+q rather than by per-channel σ(g ⊤
+j x), and cross-index cou-
+pling Coij with i̸=j is permitted. SwiGLU is recovered as
+the special case r=s=m with Coij =δ oiδij, in which (5)
+reduces to zi =p i SiLU(qi) (Lemma A.1). The block has
+parameter count 2dr+ds+sr 2, against 3dm for SwiGLU;
+relative to SwiGLU, it is a strictly larger function class as a
+parameterized object, but a parameter-budget comparison is
+conditional on(d, r, s)and is given in Appendix A (§A.4).
+Positioning.Several lines of prior tensor work on neu-
+ral networks address related but distinct questions. Cohen
+et al. (2016) establish CP-vs-hierarchical-Tucker expressiv-
+ity gaps for deep convolutional arithmetic circuits; Novikov
+et al. (2015) compress weight matrices via tensor-train fac-
+torizations; classical factorization machines (Rendle, 2010)
+model pairwise feature interactions through low-rank multi-
+plicative atoms. Our object is the single transformer-FFN
+block, read as a routed third-order interaction with neither
+weight compression nor depth as the lever; the contribution
+is the local diagonal-vs-dense Tucker analogue and an exact
+width separation in the aligned class.
+4. The Diagonal Bottleneck
+We isolate the structural cost of the same-index restriction.
+Holding the latent feature spaces P, Qfixed, we ask how
+many SwiGLU channels are required to realize the same
+map as a Tucker-core block. This is not a universal lower
+bound against arbitrary SwiGLU dictionaries; it isolates the
+diagonal pairing constraint from the cost of learning the
+latent dictionaries themselves.
+Definition 4.1(Aligned SwiGLU representation).Given
+Tucker latent matrices P, Q∈R d×r, analigned width- m
+SwiGLU representationis a map
+by(x) =
+rX
+j=1
+kjX
+ν=1
+ujν (a⊤
+jν p) SiLU(qj),
+rX
+j=1
+kj =m,(6)
+with ujν ∈R d, ajν ∈R r, p=P ⊤x, and q=Q ⊤x.
+Equivalently, each unit uses a main vector inspan(P) and
+one of the gate vectorsQ :j.
+The aligned class is the natural object of study whenever the
+latent dictionaries (P, Q)are already learned: distillation
+from a Tucker teacher, post-training compression, and the
+inner-loop alignment a SwiGLU would have to discover
+before exploiting the Tucker structure. In each case, the
+question reduces to how many SwiGLU units are needed
+given those dictionaries. Theorem 4.2 is the answer to that
+question; it does not lower-bound an unconstrained SwiGLU
+that is free to learn its own(P, Q).
+Grouping the contributions in (5) bySiLU(q j)gives
+yTucker(x) =
+rX
+j=1
+Vj pSiLU(q j), V j :=RC :,:,j ∈R d×r.
+(7)
+We call Vj theoutput-by-main-feature coefficient matrix
+attached to gate qj. The aligned SwiGLU map admits
+the same decomposition with Vj replaced by bVj :=Pkj
+ν=1 ujν a⊤
+jν , which satisfiesrank( bVj)≤k j.
+Theorem 4.2(Diagonal bottleneck).Assume [P Q]∈
+Rd×2r has full column rank. Then the minimum width of
+an aligned SwiGLU representation that exactly realizes a
+Tucker-core FFN with output-coefficient matrices{Vj}r
+j=1
+2
+
+=== PAGE BREAK ===
+
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+SwiGLU as a Routed CP Tensor Model
+is
+mmin =
+rX
+j=1
+rank(Vj).(8)
+The lower bound follows by varying (p, q)independently,
+possible by the rank assumption on [P Q] , and using
+SiLU(0) = 0 together with SiLU(1)̸= 0 to isolate each
+gate. The upper bound is constructive: a rank decomposi-
+tion Vj = Pρj
+ν=1 ujν a⊤
+jν realizes the j-th gated slice using
+ρj = rank(V j) aligned SwiGLU units. Full proof in Ap-
+pendix A.
+Corollary 4.3(Generic separation).If R has full col-
+umn rank and each slice C:,:,j ∈R s×r is generic, then
+rank(Vj) = min(r, s)for every j, so mmin =rmin(r, s).
+In particular, for the balanced caser=s=k,
+mmin =k 2,(9)
+so a generic Tucker-core FFN with 3dk+k 3 parameters
+requires an aligned SwiGLU block with 3dk2 parameters to
+simulate exactly; ford≫k 2 this is a factor-kseparation.
+Remark4.4.The bound is representational. It says nothing
+about whether SGD recovers the optimal Tucker core or
+whether stacked SwiGLU layers can compensate at matched
+depth, both of which we return to in Section 6. Numerical-
+rank intuition for approximate simulation is sketched in
+Appendix A (§A.5); a complete approximation theorem is
+left to future work.
+5. Empirical Characterization
+The CP decomposition of (4) is algebraically exact, but
+exactness alone does not establish that the structure is in-
+formative: if every αj(x) were approximately constant, the
+decomposition would be correct but inert. We test whether
+trained SwiGLU models actually use the routed-CP struc-
+ture, whether the aligned width separation of Theorem 4.2
+is reachable in practice, and whether trained Tucker LMs
+use non-diagonal core structure that an aligned SwiGLU at
+widthrwould be unable to remove.
+5.1. Post-hoc constant-αablation breaks Qwen2.5-0.5B
+SwiGLU
+We ablate the input-dependence of the gate by replacing
+αj(x) =σ(g ⊤
+j x) with a constant α0 at inference time, turn-
+ing each hidden unit into hj(x) =α 0 (w⊤
+j x)(g⊤
+j x). We
+use Qwen2.5-0.5B (Yang et al., 2024) (24 SwiGLU layers,
+d= 896 , m= 4864 ) on a 4096-token chunk of WikiText-2.
+Three replacements are tested: α0 = 0.5 (uniform, near the
+early-layer mean), α0 =E x[σ(g ⊤
+j x)] (per-channel mean,
+preserving average scale per channel), and α0 = 1 (the
+static bilinear setting of Pearce et al. (2025)). All three ap-
+ply to every layer simultaneously; perplexity is evaluated
+on a held-out chunk not used to calibrate the per-channel
+means.
+Replacement Perplexity
+Baseline (full routing)16.8
+Uniform (α= 0.5)2.7×10 5
+Bilinear (α= 1)7.4×10 5
+Per-channel mean (α=E[α j])6.4×10 6
+Table 1.Post-hoc constant- α replacement on a pretrained Qwen2.5-
+0.5B SwiGLU. All three replacements degrade perplexity by 4–6
+orders of magnitude.
+Every constant replacement we tested catastrophically de-
+grades the model’s outputs. The ordering is informative: the
+per-channel mean is the most damaging despite preserving
+each channel’s average scale, suggesting that preserving
+per-channel average scale is insufficient and that rare or
+input-specific gate deviations may be important. The α≡1
+ablation corresponds algebraically to the bilinear GLU form
+analysed by Pearce et al. (2025) on trained bilinear MLPs;
+imposing it post hoc on a trained SwiGLU is a different
+setting and is catastrophic here. The table shows that pre-
+trained Qwen2.5-0.5B SwiGLU layers rely strongly on their
+learned input-dependent routing, and that post-hoc constant-
+αreplacements are not function-preserving.
+5.2. Synthetic verification of Theorem 4.2
+To check that the lower bound(8) is tight in practice and not
+just in algebra, we generate a synthetic Tucker-core teacher
+with full-rank generic frontal slices (d= 64 , balanced r=
+s=k for k∈ {4,8,16} , C:,:,j resampled until full rank)
+and fit three student families to its outputs by mean-squared
+error: anunconstrainedSwiGLU with free wl, gl ∈R d,
+analignedSwiGLU restricted to the matched-coordinates
+hypothesis class of Definition 4.1 (wl =P al, gl =Q :,jl),
+and a Tucker-core control. We sweep the SwiGLU width
+m across a geometric grid bracketing k2 and report the best
+validation MSE over 8 random seeds and 8000 Adam steps
+with a cosine schedule.
+The aligned-SwiGLU curve (Figure 1, dashed red) shows the
+predicted knee at m=k 2 for every k: validation MSE drops
+by roughly twelve orders of magnitude between m < k2
+and m≥2k 2, reaching 1.3×10 −14 at k= 4 , 6.4×10 −14
+at k= 8 , and 3.4×10 −12 at k= 16 ; the SVD-constructed
+point at m=k 2 in Figure 1 confirms that the upper bound is
+attained without optimization. The unconstrained SwiGLU
+is a strict superset of the aligned class, so its persistent
+plateau (∼10 −4 at k= 4 , ∼10 −3 at k= 8 , ∼10 −1 at
+k= 16 ) is an optimization failure, not a representational
+one: the unconstrained student did not discover the aligned
+construction under this optimizer in the swept range, indi-
+cating that the constructive representation guaranteed by
+Theorem 4.2 is not automatically found by naive end-to-end
+3
+
+=== PAGE BREAK ===
+
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+SwiGLU as a Routed CP Tensor Model
+Figure 1.Synthetic verification of Theorem 4.2. Validation MSE of student SwiGLU and Tucker FFNs fit to a generic Tucker teacher with
+full-rank cores (d= 64 , balanced r=s=k for k∈ {4,8,16}, eight seeds, 8000 Adam steps with cosine schedule). Aligned SwiGLU
+(matched-coordinates hypothesis class of Definition 4.1) shows the predicted knee at m=k 2 and reaches machine precision at m≥2k 2
+in every panel; unconstrained SwiGLU plateaus far above machine precision over the same range under the same optimizer. Vertical
+dotted line marksm=k 2.
+training. The aligned hypothesis class makes the bound
+reachable in practice. The Tucker control’s persistent floor
+reflects optimization, not capacity.
+5.3. A trained Tucker LM uses non-diagonal core
+structure that cannot be removed post hoc
+The synthetic experiment verifies the bound at machine pre-
+cision in the matched-coordinates setting that the theorem as-
+sumes. We now ask whether a trained Tucker LM uses core
+structure that the SwiGLU recovery condition would force
+it to discard. We train a Tucker-core transformer ( d=512,
+L=8, r=s=128, ∼50 M parameters) on 100M tokens of
+FineWeb-Edu (Penedo et al., 2024) and apply two structural
+ablations to the trained core C ∈Rs×r×r at evaluation time.
+The λ-sweep interpolates C(λ) = (1−λ)C+λdiag(C) ,
+where diag(C) retains only the superdiagonal entries Cooo.
+The ρ-sweep replaces the output-by-main-feature matrix
+Vj =RC (j) with its rank-ρ SVD truncation gate-by-gate,
+exactly the constraint Theorem 4.2 imposes on an aligned
+SwiGLU of widthm=ρ·r.
+Figure 2.Diagonal-bottleneck cost on a trained Tucker LM ( d=
+512, r=s= 128 , 100M FineWeb-Edu tokens, 64-sequence held-
+out validation set). Left: validation perplexity as C→diag(C)
+via C (λ) = (1−λ)C+λdiag(C) ; the λ=1 point is the SwiGLU
+recovery condition of Lemma A.1. Right: per-gate SVD truncation
+Vj =R C (j) at rank ρ, equivalent to an aligned SwiGLU of
+width m=ρ·r (Theorem 4.2). Trained perplexity 111.84 vs.
+fully diagonal-projected 57 975 (518×); baseline preservation at
+ρ=128holds within0.002%relative error.
+Forcing C onto its superdiagonal, the SwiGLU recovery
+condition of Lemma A.1, costs a factor of 518× in valida-
+tion perplexity on a held-out FineWeb-Edu split (111.84→
+57 975; Figure 2, left). The ρ-truncation curve (right) traces
+the bound directly: ρ=1 recovers an aligned-SwiGLU width-
+r block and yields perplexity 4.2×10 4; ρ=8 already drops
+to 667; the curve flattens to baseline ( 111.84) at ρ=128,
+with a baseline preservation check passing at 0.002% rela-
+tive error. Per-gate stable rank of Vj in the trained model
+concentrates around ¯ρ≈4 (Appendix B.2), an order of mag-
+nitude above the rank-one ceiling that aligned SwiGLU at
+width r would impose. Matched-parameter Tucker students
+fitted to a Tucker teacher achieve 22% lower MSE than
+SwiGLU students at the LM-config budget (Appendix B.3),
+realising the layer-level gap Theorem 4.2 predicts.
+6. Discussion
+Together, the three experiments characterise the diago-
+nal bottleneck from complementary directions: pretrained
+SwiGLU layers depend on input-routed gating (§5.1), syn-
+thetic teacher–student fits attain thermin(r, s)width thresh-
+old at machine precision (§5.2), and a trained Tucker LM
+stores cross-channel core structure that an aligned SwiGLU
+at width r cannot retain (§5.3). The bottleneck is therefore
+both representationally tight and empirically loaded.
+Various open directions remain. Theorem 4.2 is a single-
+layer aligned result; whether L stacked SwiGLU layers
+can simulate one Tucker layer at matched compute is the
+natural follow-up. The bound is representational rather
+than about learnability (Remark 4.4). End-to-end train-
+ing at the 50M-parameter scale (Appendix B.5) shows a
+variance-preserving Tucker initialisation matching SwiGLU
+within run-to-run noise, but the single-seed result is not
+strong enough to claim either superiority or equivalence;
+we leave end-to-end scaling to future work. The bilin-
+ear αj ≡1 setting analysed by Pearce et al. (2025) via
+eigendecomposition is recovered as the gate-saturated limit
+(αj(x)→1 ) of the routed-CP form. Connections to circuit
+4
+
+=== PAGE BREAK ===
+
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266
+267
+268
+269
+270
+271
+272
+273
+274
+SwiGLU as a Routed CP Tensor Model
+/ tensor-factorization formalisms (Loconte et al., 2024) and
+to transcoders (Dunefsky et al., 2024; Paulo et al., 2025) are
+discussed in Appendix C.
+References
+Cohen, N., Sharir, O., and Shashua, A. On the expressive
+power of deep learning: A tensor analysis. InConference
+on Learning Theory (COLT), 2016. arXiv:1509.05009.
+Dunefsky, J., Chlenski, P., and Nanda, N. Transcoders
+find interpretable LLM feature circuits.arXiv preprint
+arXiv:2406.11944, 2024.
+Jayakumar, S. M., Menick, J., Czarnecki, W. M., Schwarz,
+J., Rae, J., Osindero, S., Teh, Y . W., Harley, T., and Pas-
+canu, R. Multiplicative interactions and where to find
+them. InInternational Conference on Learning Repre-
+sentations, 2020.
+Kolda, T. G. and Bader, B. W. Tensor decompositions and
+applications.SIAM Review, 51(3):455–500, 2009.
+Loconte, L., Mari, A., Gala, G., Peharz, R., de Campos, C.,
+Quaeghebeur, E., Vessio, G., and Vergari, A. What is
+the relationship between tensor factorizations and cir-
+cuits (and how can we exploit it)?arXiv preprint
+arXiv:2409.07953, 2024.
+Nadaraya, E. A. On estimating regression.Theory of Prob-
+ability and its Applications, 9(1):141–142, 1964.
+Novikov, A., Podoprikhin, D., Osokin, A., and Vetrov, D.
+Tensorizing neural networks. InAdvances in Neural In-
+formation Processing Systems, 2015. arXiv:1509.06569.
+Pai, D. Regression is all you need. 2025.
+Tilde Research. https://blog.tilderesearch.
+com/vignettes/regression.
+Paulo, G., Shabalin, S., and Belrose, N. Transcoders beat
+sparse autoencoders for interpretability.arXiv preprint
+arXiv:2501.18823, 2025.
+Pearce, M. T., Dooms, T., Rigg, A., Oramas, J. M., and
+Sharkey, L. Bilinear MLPs enable weight-based mech-
+anistic interpretability. InInternational Conference on
+Learning Representations, 2025.
+Penedo, G., Kydl ´ıˇcek, H., Allal, L. B., Lozhkov, A.,
+Mitchell, M., Raffel, C., Werra, L. V ., and Wolf, T. The
+FineWeb datasets: Decanting the web for the finest text
+data at scale. InAdvances in Neural Information Process-
+ing Systems Datasets and Benchmarks Track, 2024.
+Rendle, S. Factorization machines. InIEEE International
+Conference on Data Mining (ICDM), 2010.
+Shazeer, N. GLU variants improve transformer.arXiv
+preprint arXiv:2002.05202, 2020.
+Yang, A., Yang, B., Zhang, B., Hui, B., Zheng, B., Yu, B.,
+Li, C., Liu, D., Huang, F., Wei, H., Lin, H., Yang, J., Tu,
+J., Zhang, J., Yang, J., Yang, J., Zhou, J., Lin, J., Dang,
+K., Lu, K., Bao, K., Yang, K., Yu, L., Li, M., Xue, M.,
+Zhang, P., Zhu, Q., Men, R., Lin, R., Li, T., Xia, T., Ren,
+X., Ren, X., Fan, Y ., Su, Y ., Zhang, Y ., Wan, Y ., Liu, Y .,
+Cui, Z., Zhang, Z., and Qiu, Z. Qwen2.5 technical report.
+arXiv preprint arXiv:2412.15115, 2024.
+Yang, A., Li, A., Yang, B., Zhang, B., Hui, B., Zheng, B.,
+Yu, B., Gao, C., Huang, C., Lv, C., Zheng, C., Liu, D.,
+Zhou, F., Huang, F., Hu, F., Ge, H., Wei, H., Lin, H., Tang,
+J., Yang, J., Tu, J., Zhang, J., Yang, J., Yang, J., Zhou,
+J., Zhou, J., Lin, J., Dang, K., Bao, K., Yang, K., Yu, L.,
+Deng, L., Li, M., Xue, M., Li, M., Zhang, P., Wang, P.,
+Zhu, Q., Men, R., Gao, R., Liu, S., Luo, S., Li, T., Tang,
+T., Yin, W., Ren, X., Wang, X., Zhang, X., Ren, X., Fan,
+Y ., Su, Y ., Zhang, Y ., Zhang, Y ., Wan, Y ., Liu, Y ., Wang,
+Z., Cui, Z., Zhang, Z., Zhou, Z., and Qiu, Z. Qwen3
+technical report.arXiv preprint arXiv:2505.09388, 2025.
+5
+
+=== PAGE BREAK ===
+
+275
+276
+277
+278
+279
+280
+281
+282
+283
+284
+285
+286
+287
+288
+289
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309
+310
+311
+312
+313
+314
+315
+316
+317
+318
+319
+320
+321
+322
+323
+324
+325
+326
+327
+328
+329
+SwiGLU as a Routed CP Tensor Model
+A. Proof of Theorem 4.2
+A.1. Setup
+Before turning to the proof, we verify that the Tucker-core FFN strictly contains SwiGLU, so that the bound below measures
+a genuine cost of the diagonal restriction.
+Lemma A.1(SwiGLU recovery).Setting r=s=m , P=W , Q=G , R=U ⊤, and Coij =δ oiδij in (5) reduces the
+Tucker-core FFN to the SwiGLU map(1).
+Proof. With Coij =δ oiδij, equation (5) collapses to zo =p o SiLU(qo), so z=p⊙SiLU(q) = (P ⊤x)⊙SiLU(Q ⊤x).
+WithP=W,Q=G,R=U ⊤, this is exactlyhfrom (1), andy=Rz=U ⊤h.
+We restate notation for self-containedness. Let d≥2r , ϕ(t) = SiLU(t) =tσ(t) with σ(t) = (1 +e−t)−1, and let ϕ(0) = 0,
+ϕ(1)̸= 0(the only properties ofϕused below). The Tucker-GLU output, expanded along the gate index, is
+yTucker(x) =
+sX
+o=1
+rX
+i,j=1
+R:o Coij pi ϕ(qj) =
+rX
+j=1
+Vj p ϕ(qj),(10)
+where, defining thej-th core sliceC (j) ∈R s×r byC (j)
+oi :=C oij,
+Vj :=R C(j) ∈R d×r.(11)
+A width-maligned SwiGLU representation (6) likewise admits the decompositionby(x) = P
+j bVj p ϕ(qj), with
+bVj :=
+kjX
+ν=1
+ujν a⊤
+jν ∈R d×r,rank( bVj)≤k j.(12)
+Assumption A.2(Latent surjectivity). [P Q]∈R d×2r has full column rank. Equivalently, [P Q]⊤ :R d →R 2r has rank
+2r, so its image is all ofR 2r ∼= Rr ×R r, andx7→(P ⊤x, Q⊤x)is surjective ontoR r ×R r.
+A.2. Proof of Theorem 4.2
+Lower bound.Suppose an aligned representation (6) satisfies by≡yTucker. By Assumption A.2, (p, q)ranges over all of
+Rr ×R r, so
+rX
+j=1
+(Vj − bVj)p ϕ(qj) = 0for allp, q∈R r.(13)
+Fixj 0 and chooseq j0 = 1,q j = 0forj̸=j 0. Sinceϕ(0) = 0, only thej 0-th term survives in (13):
+(Vj0 − bVj0 )p ϕ(1) = 0for allp∈R r.
+Since ϕ(1)̸= 0 , this forces Vj0 = bVj0. As j0 was arbitrary, Vj = bVj for all j. Combining with (12) gives kj ≥rank(V j),
+and summing overjyieldsm≥ P
+j rank(Vj).
+Tightness.Setρ j := rank(Vj)and letV j = Pρj
+ν=1 ujν a⊤
+jν be any rank decomposition. Then
+Vj p ϕ(qj) =
+ρjX
+ν=1
+ujν (a⊤
+jν p)ϕ(q j)
+=
+ρjX
+ν=1
+ujν
+ 
+(P ajν )⊤x
+
+ϕ(Q⊤
+:j x),
+which is a sum of ρj aligned SwiGLU units (main vector P ajν , gate vector Q:j, output vector ujν ). Realizing every j this
+way gives total width P
+j ρj, attaining the bound.
+6
+
+=== PAGE BREAK ===
+
+330
+331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342
+343
+344
+345
+346
+347
+348
+349
+350
+351
+352
+353
+354
+355
+356
+357
+358
+359
+360
+361
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373
+374
+375
+376
+377
+378
+379
+380
+381
+382
+383
+384
+SwiGLU as a Routed CP Tensor Model
+A.3. Generic-rank corollary
+Lemma A.3(Generic rank).The set of s×r matrices with rank strictly less than min(r, s)is a proper algebraic subvariety
+of Rs×r, defined by the vanishing of all min(r, s)×min(r, s)minors. In particular, it has Lebesgue measure zero, so a
+generics×rmatrix has rankmin(r, s).
+Proof of Theorem 4.3. By (11) and the full column rank of R, rank(Vj) = rank(R C(j)) = rank(C (j)). By Theorem A.3,
+rank(C (j)) = min(r, s)for eachj, sorank(V j) = min(r, s)and Theorem 4.2 givesmmin =rmin(r, s).
+RemarkA.4 (Almost-sure formulation).If d≥s and (R,C) are drawn from any distribution absolutely continuous with
+respect to Lebesgue measure on the parameter space, then by Theorem A.3 the rank-deficient locus has measure zero, so
+rank(Vj) = min(r, s)almost surely.
+A.4. Parameter-budget separation
+The two parameter counts areNTucker(d, r, s) = 2dr+ds+sr2 and NSwiGLU(d, m) = 3dm. Combining with Theorem 4.3
+gives the matched-simulation cost NSwiGLU,eq(d, r, s) = 3d rmin(r, s). Tucker is parameter-cheaper than the minimum-
+width aligned simulator when
+2dr+ds+sr 2 <3d rmin(r, s).(14)
+Case s≤r .Here mmin =rs , and (14) reduces to d(3rs−2r−s)> sr 2. When 3rs−2r−s >0 , the threshold is
+d > sr2/(3rs−2r−s).
+Cases≥r.Herem min =r 2, and (14) reduces tod(3r 2 −2r−s)> sr 2. Fors=O(r), this holds onced= Ω(r).
+Balanced case s=r=k .The two counts become NTucker = 3dk+k 3 and NSwiGLU,eq = 3dk 2, so Tucker is
+parameter-cheaper whenever
+d > k2
+3(k−1) ,(15)
+i.e. approximatelyd > k/3for largek. In the transformer regimed≫k,
+NSwiGLU,eq
+NTucker
+= 3dk2
+3dk+k 3 = 3dk
+3d+k 2 ≈k(d≫k 2),(16)
+giving a factor-kseparation.
+A.5. Numerical-rank intuition
+RemarkA.5 (Numerical-rank intuition).Theorem 4.2 is an exact-equality result. Under approximate simulation in (say) L2
+norm over a bounded input region, the rank lower bound is heuristically replaced by a numerical-rank condition: an aligned
+SwiGLU block needs at least as many units per gate j as the numerical rank of Vj above the target tolerance scale ε. We do
+not prove this; a complete approximation-theoretic version, including stability of the rank decomposition and the role of σ
+saturation in the gate, is left to future work.
+B. Empirical details
+B.1. Routing variance across depth
+The Qwen2.5-0.5B routing coefficients αj(x) =σ(g ⊤
+j x) are not approximately constant in any layer; per-channel
+Varx[αj(x)] averaged across channels is U-shaped in depth, low in middle layers and rising sharply through the fi-
+nal layers (Figure 3). This complements the constant- α ablation (Table 1) and confirms that the gate carries non-trivial
+input-dependent signal at every depth, not just on average.
+B.2. Stable rank ofV j
+For the matched-budget Tucker LM trained from scratch (§B.5), the per-gate stable rank∥Vj∥2
+F /∥Vj∥2
+op concentrates around
+¯ρ≈4 across all gates and layers, with min 2.79 and max 5.30 (Figure 4). This is well above the rank-one ceiling that
+7
+
+=== PAGE BREAK ===
+
+385
+386
+387
+388
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418
+419
+420
+421
+422
+423
+424
+425
+426
+427
+428
+429
+430
+431
+432
+433
+434
+435
+436
+437
+438
+439
+SwiGLU as a Routed CP Tensor Model
+Figure 3.Routing validation on Qwen2.5-0.5B (Yang et al., 2024). Per-channel routing variance Varx[αj(x)] averaged across channels is
+U-shaped in depth, low in middle layers and rising sharply through the final layers (24 SwiGLU layers, 4096-token chunk of WikiText-2).
+Right panel: validation perplexity under three constant-αablations applied to all layers simultaneously, complementary to Table 1.
+aligned SwiGLU at width r would impose (Theorem 4.2, ρ=1 point of Figure 2, right), and below the random-init Tucker
+baseline (¯ρ≈27.6): the variance-preserving warm-start keeps the model close to a SwiGLU-equivalent diagonal subspace
+while still using cross-channel rank around¯ρ≈4, well above one.
+B.3. Distillation gap at matched budget
+We isolate the layer-level expressivity gap from the end-to-end optimisation gap by distilling a single Tucker-LM layer (layer
+4 of the trained Tucker model, d=512, r=128) into matched-parameter Tucker and SwiGLU students at four budget points
+(Figure 5). SwiGLU achieves lower MSE at small budgets (optimisation dominates), but at the matched-LM-config budget
+(∼2.3M parameters, r=s=128 for Tucker, m=1493 for SwiGLU) Tucker achieves lower validation MSE than SwiGLU
+(8.38 vs. 1.08×10 1, a 22% reduction, mean over 3 seeds). The crossover at ∼7×10 5 parameters is consistent with the
+ρ-truncation curve of Figure 2.
+B.4. Same-index pairing permutation
+The same-index coupling among W , G, U in (4) is non-trivial: random permutation of any single factor matrix in a trained
+Qwen2.5-0.5B SwiGLU layer (8 seeds) degrades perplexity by 3–4 orders of magnitude in early layers and by 10–50%
+in middle layers, while the no-op control of permuting G, U, and W together by the same π recovers baseline to within
+7.6×10 −6 relative error (Figure 6). The asymmetry across depth is itself layer-dependent, but the no-op control rules out a
+unit-relabelling artefact: the model has learned a specific pairing ofw j,g j,u j at each hidden indexj.
+B.5. End-to-end LM training
+Theorem 4.2 is a layer-level representational result; whether the gap survives end-to-end training is a separate question
+we cannot fully resolve at workshop scale. We train SwiGLU and Tucker-core LMs at matched parameter count (∼50M
+params, 100M FineWeb-Edu tokens). Random Tucker initialisation pays a ∼30% perplexity penalty over SwiGLU, but a
+variance-preserving warm-start at the SwiGLU recovery point (Cooo = 1, off-diagonal std ε/r with ε= 10 −2, full-core std
+1/r) closes this gap (Table 2; loss curves in Figure 7). The −0.005 nats single-seed difference is sub-noise and we do not
+read it as Tucker outperforming SwiGLU; the takeaway is that the corrected initialisation matches SwiGLU end-to-end at
+this scale, leaving the architectural separation to be probed at the layer level (§5.3) and in distillation (Appendix B.3).
+Validation loss vs. tokens for the SwiGLU and default-init Tucker runs of Table 2 is plotted in Figure 7. The variance-
+preserving Tucker run sits within the SwiGLU curve at every checkpoint and is omitted from the figure for legibility; final
+numbers are in Table 2.
+8
+
+=== PAGE BREAK ===
+
+440
+441
+442
+443
+444
+445
+446
+447
+448
+449
+450
+451
+452
+453
+454
+455
+456
+457
+458
+459
+460
+461
+462
+463
+464
+465
+466
+467
+468
+469
+470
+471
+472
+473
+474
+475
+476
+477
+478
+479
+480
+481
+482
+483
+484
+485
+486
+487
+488
+489
+490
+491
+492
+493
+494
+SwiGLU as a Routed CP Tensor Model
+Figure 4.Per-gate stable rank ∥Vj∥2
+F /∥Vj∥2
+op across gates and layers in a Tucker FFN trained from scratch with the variance-preserving
+warm start (d=512, r=s=128, L=8). Mean ¯ρ≈3.97 (min 2.79, max 5.30), well above the rank-one ceiling that aligned SwiGLU at
+widthrwould impose under Theorem 4.2 (red line).
+Table 2.Validation loss after 100M FineWeb-Edu tokens at matched parameter count (d=512, L=8, r=s=128 for Tucker, m=1493 for
+SwiGLU; one seed). Variance-preserving init closes the optimisation gap between random-init Tucker and SwiGLU. Within-run std of val.
+loss over the last 10 checkpoints is ≈0.014 for both arches, comparable to or larger than the 0.005-nat gap, so the table should be read as
+a sanity check rather than a superiority claim.
+arch / init params val loss ppl
+SwiGLU52.5M4.758 116.5
+Tucker, default init52.5M5.116 166.7
+Tucker, var-preserving52.5M4.753 116.0
+B.6. Cross-model robustness
+The constant-α ablation result of §5.1 is not specific to Qwen2.5-0.5B. The same constant-α ablation pattern (4–7 orders of
+magnitude perplexity penalty) and the same depth profile of routing variance hold on Qwen3-1.7B (Yang et al., 2025), a
+separate model family at ∼3× scale (Figure 8). We attempted Llama-3.2-1B first; the script falls back to Qwen3-1.7B when
+the Llama checkpoint is gated.
+B.7. Hyperparameters and reproducibility
+At the matched-parameter LM config (d=512, L=8), both SwiGLU and Tucker-core FFNs have≈3.67×10 7 forward FLOPs
+per token, with measured throughput112,496 vs. 75,009 tokens/sec on a single NVIDIA A100; Tucker is FLOPs-comparable,
+with the throughput gap reflecting the smaller-batch GEMM shapes the core contraction induces.
+Tucker LM and SwiGLU LM training.We train both architectures from scratch on FINEWEB-EDU sample-10BT
+(HuggingFace HuggingFaceFW/fineweb-edu, version pinned to the dataset hash on record at the time of the run)
+tokenized with the GPT-2 BPE tokenizer (vocabulary50,257). Context length T=1024 , batch size B=24 sequences (24K
+tokens per optimizer step). Optimizer: AdamW ( β1=0.9, β2=0.95), weight decay 0.1 on all non-bias, non-RMSNorm
+parameters; the Tucker core C is held in a separate parameter group with weight decay 0. Gradient clipping at 1.0. LR
+schedule: linear warmup over 1% of total steps, cosine decay to 1% of peak; peak LR 0.0003. Precision: bf16 autocast for
+the forward/backward, fp32 master parameters and optimizer state. Hardware: single NVIDIA A100 (80 GB). Total:≈6000
+optimizer steps, 147M training tokens. We log validation cross-entropy every ≈2 M tokens on a held-out ≈2 M-token slice
+of FineWeb-Edu (disjoint from the training stream by random seed); the curves in Figure 7 use these checkpoints.
+9
+
+=== PAGE BREAK ===
+
+495
+496
+497
+498
+499
+500
+501
+502
+503
+504
+505
+506
+507
+508
+509
+510
+511
+512
+513
+514
+515
+516
+517
+518
+519
+520
+521
+522
+523
+524
+525
+526
+527
+528
+529
+530
+531
+532
+533
+534
+535
+536
+537
+538
+539
+540
+541
+542
+543
+544
+545
+546
+547
+548
+549
+SwiGLU as a Routed CP Tensor Model
+Figure 5.Distillation validation MSE (Tucker teacher, r=128) for SwiGLU and Tucker FFN students fit to a trained Tucker teacher
+layer (layer 4 of the trained Tucker LM, d=512; matched parameter budgets, three seeds per budget). At small budgets, optimization
+dominates and SwiGLU wins; at the matched-LM-config budget (∼2.3 M parameters: r=s=128 for Tucker, m=1493 for SwiGLU)
+Tucker matches the teacher22%more accurately (1.08×10 1 vs.8.38val MSE). Crossover near7×10 5 parameters.
+The variance-preserving Tucker initialization is Coij ∼ N(0,1/r2) for the off-diagonal entries with diagonal warm start
+Cooo ←1 (using o for the core output index to avoid collision with the routing scalar αj(x)), so that at initialization the
+layer evaluates the SwiGLU recovery form zo =p o SiLU(qo) plus O(ε/r) noise at ε=10−2. Latent projections P, Qand
+output projectionRuse He-uniform init.
+Constant-α ablation.Calibration set: 32 sequences of length 1024 from the WikiText-2 train split (32K tokens), used
+to estimate the per-channel mean ¯αj =E x[αj(x)] for the α= ¯αcondition. Activations are tapped at the input to the gate
+projection (afterthe FFN’s input RMSNorm, which is the standard tap point in HuggingFace SwiGLU implementations).
+All 24 layers are ablated simultaneously by replacing σ(g ⊤
+j x) with the constant for that condition. Evaluation perplexity:
+4,096-token chunk of WikiText-2 validation.
+Synthetic Tucker teacher (Figure 1). d=64. Per teacher, P, Q, R∼ N(0,1/d); C∈R k×k×k is sampled Coij ∼ N(0,1)
+and resampled until every frontal slice C (j) =C[:,:, j] has full rank k (typically the first sample suffices). Inputs
+x∼ N(0, Id); train/val sizes 50000/5000. Adam, lr 0.003, batch 512, 8000 steps with cosine schedule ( 1% floor, no
+warmup). 8 seeds per (k, m)cell, val MSE reported as the minimum across seeds (best fit achievable). Aligned-SwiGLU
+students use the teacher’s P, Qas fixed latent dictionaries (the matched-coordinates assumption of Theorem 4.2); each unit’s
+gate index is assigned round-robin over the k gates. The SVD-construction marker (Figure 1) is computed analytically from
+the teacher’sV j =RC (j) via SVD without any optimization.
+Distillation (Figure 5).Teacher: layer ℓ=4 of a trained Tucker LM (d=512, r=s=128). Inputs are sampled by streaming
+FineWeb-Edu through the teacher LM and capturing the residual-stream activations entering the chosen FFN; train/val
+sizes 80000/8000 tokens. Adam, lr 0.001, batch 512, 8000 steps with cosine schedule (1% floor, 5% warmup) and gradient
+clipping1.0.3seeds per budget; error bars are±one std across seeds.
+Code.Code will be released upon acceptance.
+10
+
+=== PAGE BREAK ===
+
+550
+551
+552
+553
+554
+555
+556
+557
+558
+559
+560
+561
+562
+563
+564
+565
+566
+567
+568
+569
+570
+571
+572
+573
+574
+575
+576
+577
+578
+579
+580
+581
+582
+583
+584
+585
+586
+587
+588
+589
+590
+591
+592
+593
+594
+595
+596
+597
+598
+599
+600
+601
+602
+603
+604
+SwiGLU as a Routed CP Tensor Model
+Figure 6.Per-layer perplexity under random permutations of one trained SwiGLU layer in Qwen2.5-0.5B (eight seeds). Joint πG=πU
+breaks the same-index W –G coupling; πU -only is a control that breaks U pairing alone. The no-op control (joint πG=πU =πW ) overlays
+the baseline at every layer to within7.6×10 −6 relative error, ruling out a unit-relabelling artifact.
+C. Interpretation of the diagonal bottleneck
+The theorem isolates the cost of diagonal pairing. A Tucker-GLU block parameterizes cross-channel interactionspi ↔ϕ(q j)
+through the dense core entries Coij; after applying the output factor R, each gate qj acquires an output-by-main-feature
+matrix Vj ∈R d×r. An aligned SwiGLU block can realize the same map only by decomposing each Vj as a sum of rank-one
+matrices, with one hidden unit per rank-one term. This forces mmin = P
+j rank(Vj), generically rmin(r, s), against the
+Tucker parameter count O(d(r+s) +sr 2). In the balanced regime r=s=k , this is a factor-k blowup. The diagonal
+restriction in SwiGLU is thus not harmless at matched latent dictionaries; it converts cross-channel information stored in
+O(k3)core entries intoO(dk 2)aligned-SwiGLU rank-one atoms.
+Connections to circuits and transcoders.The routed-CP / Tucker view sits alongside circuit / tensor-factorization
+formalisms (Loconte et al., 2024) and matches the input-invariant-atom + input-dependent-routing factorization that
+transcoders (Dunefsky et al., 2024; Paulo et al., 2025) arrive at empirically; we leave a formal connection to future work.
+11
+
+=== PAGE BREAK ===
+
+605
+606
+607
+608
+609
+610
+611
+612
+613
+614
+615
+616
+617
+618
+619
+620
+621
+622
+623
+624
+625
+626
+627
+628
+629
+630
+631
+632
+633
+634
+635
+636
+637
+638
+639
+640
+641
+642
+643
+644
+645
+646
+647
+648
+649
+650
+651
+652
+653
+654
+655
+656
+657
+658
+659
+SwiGLU as a Routed CP Tensor Model
+Figure 7.Validation loss curves for the SwiGLU and default-init Tucker runs of Table 2, trained from scratch on FineWeb-Edu (Penedo
+et al., 2024) at matched parameter count (d=512, L=8, ∼50M params, 100M tokens). The variance-preserving Tucker run sits within the
+SwiGLU curve at every checkpoint and is omitted for legibility; final numbers are in Table 2.
+Figure 8.Cross-model robustness of the routed-CP picture on Qwen3-1.7B (Yang et al., 2025) overlaid on the Qwen2.5-0.5B baseline
+(Yang et al., 2024). (a) Per-layer mean routing variance Varx[αj(x)]. (b) Constant-α ablation perplexity (baseline, uniform, per-channel
+mean, α=1); the larger model relies even more heavily on routing, with an α=1 over baseline ratio of 1.62×10 6 vs. 4.38×10 4 for
+Qwen2.5-0.5B. Both model families exhibit the same qualitative pattern, ruling out a Qwen2.5-specific artifact.
+12

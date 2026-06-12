@@ -1,0 +1,311 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage[round]{natbib}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue!60!black,citecolor=blue!60!black,urlcolor=blue!60!black]{hyperref}
+\usepackage{microtype}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\silu}{\mathrm{SiLU}}
+\newcommand{\T}{^{\top}}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\diag}{diag}
+
+\title{How Much Tensor Structure Should a Transformer FFN Have?\\
+\large Routed Block-CP Feedforward Networks Between SwiGLU and Dense Tucker}
+
+\author{Aniket Deshpande\\
+University of Illinois Urbana-Champaign\\
+\texttt{aniket4@illinois.edu}}
+
+\date{June 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+% TO FILL after results. Template (one claim per sentence):
+% 1. obstacle: FFNs hold most params; multiplicative interactions hard to interpret.
+% 2. exact observation: SwiGLU admits an exact routed CP decomposition.
+% 3. the tension: superdiagonal core = atomized but one route per rank-1 atom.
+% 4. proposal: LL1/block-CP family, per-route rank L as the dial.
+% 5. experiments + main result.
+% 6. careful implication.
+[Abstract placeholder.]
+\end{abstract}
+
+\section{Introduction}
+% P1: FFNs as the underinterpreted part of transformers.
+% P2: exact tensor view of SwiGLU (words first).
+% P3: CP's benefit and cost.
+% P4: dense Tucker is the wrong naive move (honest revision).
+% P5: LL1/block-CP structured relaxation; the gate-vs-atom budget trade.
+% P6: empirical program.
+% P7: contributions (numbered, true).
+[Introduction placeholder.]
+
+\section{The routed tensor view of gated FFNs}
+\label{sec:theory}
+
+\paragraph{Setup.}
+At a fixed token position, let $x \in \R^d$ be the residual-stream vector entering the
+feedforward block. The SwiGLU FFN \citep{shazeer2020glu} computes
+\begin{equation}
+\label{eq:swiglu}
+y = U\T h, \qquad h = (W\T x) \odot \silu(G\T x),
+\end{equation}
+with $W, G \in \R^{d\times m}$ and $U \in \R^{m \times d}$. Writing $w_j, g_j$ for the
+$j$-th columns of $W, G$ and $u_j$ for the $j$-th column of $U\T$, the $j$-th hidden
+coordinate is $h_j(x) = (w_j\T x)\,\silu(g_j\T x)$.
+
+\subsection{SwiGLU is an exactly routed CP tensor field}
+\label{sec:routedcp}
+
+Each SwiGLU channel multiplies two scalar projections of the residual stream. The SiLU
+nonlinearity factorizes exactly, $\silu(z) = z\,\sigma(z)$ with
+$\sigma(z) = (1+e^{-z})^{-1}$, so
+\begin{equation}
+\label{eq:factorized}
+h_j(x) \;=\; \underbrace{(w_j\T x)(g_j\T x)}_{\text{rank-one bilinear interaction}}
+\cdot \underbrace{\sigma(g_j\T x)}_{\alpha_j(x)\,\in\,(0,1)} .
+\end{equation}
+Defining the input-dependent interaction tensor $A(x) \in \R^{d\times d\times d}$ by
+$y_o = \sum_{a,b} A_{oab}(x)\, x_a x_b$, substituting \eqref{eq:factorized} into
+\eqref{eq:swiglu} gives
+\begin{equation}
+\label{eq:cp}
+A(x) \;=\; \sum_{j=1}^{m} \alpha_j(x)\; u_j \otimes w_j \otimes g_j ,
+\qquad \alpha_j(x) = \sigma(g_j\T x).
+\end{equation}
+This is a canonical polyadic (CP) decomposition \citep{kolda2009tensor} of $A(x)$ with
+\emph{shared, input-independent factors} and \emph{input-dependent routing weights}
+$\alpha_j(x)$. The decomposition is exact and holds pointwise in $x$; no approximation
+is involved. We call $u_j \otimes w_j \otimes g_j$ the $j$-th \emph{interaction atom}
+(what interaction is available) and $\alpha_j(x)$ its \emph{route} (when it is used).
+The bilinear $\alpha\equiv 1$ limit of this picture is the bilinear MLP analyzed by
+\citet{pearce2025bilinear}; the routed form keeps the gate inside the structural
+description rather than discarding it.
+
+Viewed as a Tucker decomposition with latent dimensions $r=s=m$ and factor matrices
+$(P,Q,R) = (W, G, U\T)$, the CP form \eqref{eq:cp} corresponds to a
+\emph{superdiagonal core}: $C_{oij} = \delta_{oi}\delta_{ij}$. This restriction cuts
+both ways. It atomizes the layer --- every hidden index is one (atom, route) pair, and
+CP decompositions are essentially unique under mild conditions
+\citep{kruskal1977three}, so the atoms are identifiable objects. But it also means one
+route controls exactly one rank-one interaction: feature $w_i$ never interacts with
+gate $g_j$ for $i \ne j$.
+
+\subsection{Dense Tucker and the per-route interaction matrix}
+\label{sec:tucker}
+
+The unconstrained relaxation drops the superdiagonal restriction. A
+\emph{Tucker-core FFN} with latent projections $P, Q \in \R^{d\times r}$, output basis
+$R \in \R^{d \times s}$, and learned core $C \in \R^{s\times r\times r}$ computes
+$p = P\T x$, $q = Q\T x$,
+\begin{equation}
+\label{eq:tuckerffn}
+z_o = \sum_{i,j=1}^{r} C_{oij}\, p_i\, \silu(q_j), \qquad y = Rz .
+\end{equation}
+Grouping by gate index exposes the structure this paper is about:
+\begin{equation}
+\label{eq:vj}
+y(x) = \sum_{j=1}^{r} V_j\, p \; \silu(q_j), \qquad V_j := R\,C^{(j)} \in \R^{d\times r},
+\quad C^{(j)}_{oi} = C_{oij}.
+\end{equation}
+Each latent gate $q_j$ routes a \emph{matrix} $V_j$ of output-by-main interactions.
+SwiGLU is the corner case $\rank V_j = 1$ for all $j$; a generic Tucker core has
+$\rank V_j = \min(r,s)$.
+
+Two properties make the dense core suspicious as an interpretability target. First,
+\emph{gauge freedom}: for any invertible $M \in \R^{r\times r}$, replacing $P \mapsto
+P M^{-\top}$ and $C^{(j)} \mapsto C^{(j)} M\T$ for all $j$ leaves the function
+unchanged, so individual latent directions $p_i$ and individual core entries carry no
+intrinsic meaning --- only the gate directions $Q_{:j}$ and the subspaces
+$\mathrm{range}(V_j)$ are well defined. Second, the core costs $s r^2$ parameters; at
+the configurations we study it absorbs over $90\%$ of the block's budget.
+
+\paragraph{The aligned-width theorem, reinterpreted.}
+Prior work on this codebase proved an exact separation: if $[P\;Q]$ has full column
+rank, an \emph{aligned} SwiGLU (units restricted to main vectors in $\mathrm{span}(P)$
+and gate vectors from the columns of $Q$) that exactly realizes \eqref{eq:vj} must have
+width $m \ge \sum_j \rank V_j$, and a rank decomposition of each $V_j$ attains the
+bound (Appendix~\ref{app:theorem}). Generically this is $r\min(r,s)$, i.e.\ $k^2$ in
+the balanced case --- the result that originally motivated dense Tucker as
+``$k\times$ cheaper than SwiGLU.'' The reading we adopt here is different: \emph{the
+theorem says the operative variable is the per-route rank $\rank V_j$}, not the
+presence of a dense core. The constructive half of the proof --- realize each $V_j$ as
+a sum of $\rank V_j$ rank-one terms sharing the same gate --- is itself an
+architecture. That architecture is the subject of this paper.
+
+\subsection{LL1/block-CP: one route, one rank-$L$ block}
+\label{sec:ll1}
+
+A third-order tensor admits a \emph{decomposition in multilinear rank-$(L,L,1)$ terms}
+(LL1; a structured block-term decomposition) if it can be written
+$T = \sum_{b=1}^{B} (A_b B_b\T) \otimes c_b$: each term is rank-$L$ in two modes and
+rank-one in the third \citep{delathauwer2008blockterm,vervliet2016tensorlab}. Taking
+the \emph{gate mode} as the rank-one mode yields the FFN we study. The
+\textbf{LL1 FFN} with $B$ blocks of rank $L$ has, per block, a gate direction
+$g_b \in \R^d$, a main factor $A_b \in \R^{d\times L}$, and an output factor
+$U_b \in \R^{d \times L}$:
+\begin{equation}
+\label{eq:ll1}
+y(x) \;=\; \sum_{b=1}^{B} U_b \big(A_b\T x\big)\, \silu(g_b\T x).
+\end{equation}
+Expanding into atoms, $y(x) = \sum_b \sum_{l=1}^{L} u_{b,l} (a_{b,l}\T x)\,
+\silu(g_b\T x)$: \emph{grouped CP}, $L$ rank-one atoms sharing one route. The
+interaction tensor is the routed LL1 tensor
+$A(x) = \sum_b \alpha_b(x)\, (U_b A_b\T) \otimes g_b$, and the per-route matrix is
+$V_b = U_b A_b\T$ with $\rank V_b \le L$ \emph{by construction}. The aligned-width
+theorem's control variable has become a hyperparameter.
+
+The family nests both endpoints exactly. At $L=1$, $B=m$, \eqref{eq:ll1} \emph{is}
+SwiGLU (verified to machine precision in our implementation); a single block with
+$L = r$ is a (one-gate) dense slice; and an LL1 FFN equals a Tucker FFN whose core is
+block-superdiagonal. LL1 decompositions also retain essential-uniqueness guarantees
+under mild conditions \citep{delathauwer2008blockterm,delathauwer2011blockterm},
+unlike the gauge-free dense core.
+
+\paragraph{What the parameter budget buys.}
+The comparison that matters is at matched parameters:
+\begin{equation}
+\label{eq:params}
+N_{\text{SwiGLU}} = 3dm, \qquad
+N_{\text{LL1}} = dB(2L+1), \qquad
+N_{\text{Tucker}} = d(2r+s) + sr^2 .
+\end{equation}
+At a fixed budget $N$, SwiGLU affords $m = N/3d$ atoms, each with a private route; LL1
+affords $BL = \tfrac{3L}{2L+1}\cdot\tfrac{N}{3d}$ atoms --- up to $1.5\times$ more ---
+but only $B = \tfrac{3}{2L+1}\cdot\tfrac{N}{3d}$ routes. \emph{LL1 trades routing
+diversity for interaction atoms.} An equivalent statement: an LL1$(B,L)$ block is
+exactly a width-$BL$ SwiGLU whose gate vectors are tied in groups of $L$. Which side
+of the trade wins is an empirical question about what trained FFNs actually need, and
+it is the question our experiments are designed to answer. A prior observation
+sharpens the stakes: in a dense Tucker LM trained from scratch, the learned per-gate
+stable rank $\|V_j\|_F^2/\|V_j\|_{\mathrm{op}}^2$ concentrates around $4$ --- far
+below the generic value $r$, far above the SwiGLU value $1$. The trained dense core
+already behaves like an LL1 model; LL1 makes that behavior an explicit, cheaper, and
+identifiable parameterization.
+
+% TABLE: matched configs (B, L, atoms, routes) at d=512 budget 2.293M.
+
+\section{Experiments}
+\label{sec:experiments}
+% Each subsection: Question / Setup / Metric / Result / Interpretation / Caveat.
+
+\subsection{Synthetic teacher--student recovery}
+\label{sec:synthetic}
+[exp18 placeholder]
+
+\subsection{Matched-budget language modeling}
+\label{sec:lm}
+[exp11/sprint\_lm placeholder]
+
+\subsection{Interpretability proxies}
+\label{sec:interp}
+[exp19/exp22 placeholder]
+
+\subsection{Circuit-level pilot: induction}
+\label{sec:induction}
+[exp20 placeholder]
+
+\section{Discussion}
+\label{sec:discussion}
+[placeholder: what is established / plausible / open; limitations; next experiment.]
+
+\section{Related work}
+\label{sec:related}
+[placeholder]
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\appendix
+
+\section{The aligned-width theorem}
+\label{app:theorem}
+
+This appendix restates, with proof, the separation theorem from the earlier draft
+accompanying this codebase, and records its constructive half as the LL1
+architecture. Throughout, $\phi = \silu$; the only properties used are $\phi(0)=0$
+and $\phi(1) \ne 0$.
+
+\begin{lemma}[SwiGLU recovery]
+\label{lem:recovery}
+Setting $r=s=m$, $P=W$, $Q=G$, $R=U\T$, and $C_{oij} = \delta_{oi}\delta_{ij}$ in
+\eqref{eq:tuckerffn} reduces the Tucker-core FFN to the SwiGLU map \eqref{eq:swiglu}.
+\end{lemma}
+
+\begin{proof}
+With the superdiagonal core, \eqref{eq:tuckerffn} collapses to
+$z_o = p_o\,\phi(q_o)$, so $z = (P\T x) \odot \phi(Q\T x)$, which is $h$ from
+\eqref{eq:swiglu}; then $y = Rz = U\T h$.
+\end{proof}
+
+\begin{definition}[Aligned SwiGLU representation]
+\label{def:aligned}
+Given latent matrices $P, Q \in \R^{d\times r}$, an \emph{aligned width-$m$ SwiGLU
+representation} is a map
+\[
+\hat y(x) = \sum_{j=1}^{r} \sum_{\nu=1}^{k_j} u_{j\nu}\, (a_{j\nu}\T p)\,\phi(q_j),
+\qquad \textstyle\sum_j k_j = m,
+\]
+with $u_{j\nu} \in \R^d$, $a_{j\nu} \in \R^r$, $p = P\T x$, $q = Q\T x$. Each unit
+uses a main vector in $\mathrm{span}(P)$ and one of the gate vectors $Q_{:j}$.
+\end{definition}
+
+\begin{theorem}[Diagonal bottleneck]
+\label{thm:bottleneck}
+Assume $[P\;Q] \in \R^{d\times 2r}$ has full column rank. The minimum width of an
+aligned SwiGLU representation exactly realizing a Tucker-core FFN with per-gate
+coefficient matrices $\{V_j\}_{j=1}^r$ is $m_{\min} = \sum_{j=1}^{r} \rank V_j$.
+\end{theorem}
+
+\begin{proof}
+\emph{Lower bound.} By the rank assumption, $x \mapsto (p, q)$ is surjective onto
+$\R^r \times \R^r$, so an exact representation forces
+$\sum_j (V_j - \hat V_j)\, p\, \phi(q_j) = 0$ for all $(p,q)$, where
+$\hat V_j = \sum_\nu u_{j\nu} a_{j\nu}\T$ has rank at most $k_j$. Fix $j_0$ and set
+$q_j = \delta_{jj_0}$; since $\phi(0) = 0$ and $\phi(1) \ne 0$, only the $j_0$ term
+survives and $V_{j_0} = \hat V_{j_0}$. Hence $k_j \ge \rank V_j$ for every $j$, and
+$m = \sum_j k_j \ge \sum_j \rank V_j$.
+
+\emph{Tightness.} Let $V_j = \sum_{\nu=1}^{\rho_j} u_{j\nu} a_{j\nu}\T$ be any rank
+decomposition, $\rho_j = \rank V_j$. Then
+$V_j\, p\, \phi(q_j) = \sum_\nu u_{j\nu} \big((P a_{j\nu})\T x\big)\,
+\phi(Q_{:j}\T x)$ is a sum of $\rho_j$ aligned units sharing gate $Q_{:j}$.
+\end{proof}
+
+\begin{corollary}[Generic separation]
+If $R$ has full column rank and each slice $C^{(j)}$ is generic, then
+$\rank V_j = \min(r,s)$ for all $j$ and $m_{\min} = r \min(r,s)$; in the balanced
+case $r=s=k$, $m_{\min} = k^2$.
+\end{corollary}
+
+\begin{remark}[The constructive half is LL1]
+The tightness construction --- $\rho_j$ rank-one units sharing the gate $Q_{:j}$ ---
+is precisely one block of the LL1 FFN \eqref{eq:ll1} with $L = \rho_j$. Theorem
+\ref{thm:bottleneck} therefore does not say ``dense cores beat SwiGLU''; it says the
+cost of simulating a routed tensor map is the sum of its per-route ranks, and an
+architecture that fixes those ranks directly realizes the map at exactly that cost.
+\end{remark}
+
+\section{Experimental details}
+\label{app:details}
+[hyperparameters, configs, hardware.]
+
+\end{document}

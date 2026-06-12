@@ -40,3 +40,20 @@ Sprint start (UTC): **2026-06-12T03:22Z**. Hard ceiling 24h → must stop by 202
   ~13s/fit, 144 fits ≈ 35 min. Early cells: CP teacher fit by swiglu and ll1_l1
   students to ~1e-4 relMSE — sanity holds (CP-structured students recover CP teacher).
 - Wrote exp19 (interp proxies) and exp20 (induction pilot); exp20 smoke running.
+
+## T+1:35 — First headline result (exp18, H1 confirmed)
+
+- LL1(L*=4) teacher: student relMSE at matched 9216-param budget:
+  L=1 (swiglu / ll1_l1): 0.15–0.17 | L=2: 0.04–0.06 | **L=4: 2e-13 (machine precision,
+  2/3 seeds; 3rd seed 2.7e-2 optimizer outlier)** | L=8: 0.36.
+- The minimum is exactly at the teacher's structure and the failures on both sides match
+  the counting argument: L<4 students have too few atoms (48, 58 < 64 = Σ rank V_b);
+  L=8 student has too few routes (8 < 16 = B*). Gate diversity and per-route rank are
+  both binding constraints — the L-axis is a real dial, not a soft preference.
+- CP teacher (32 routes): recovered by L=1 students (1e-4); monotone degradation with L
+  (L=16: 0.66) — when routes are scarce, gate-tying hurts. Symmetric story.
+- exp19/exp22 pipelines smoke-tested on all three arch paths (incl. tucker einsum path
+  and factor-stability matching: swiglu seeds matched_cos 0.40 vs null 0.13 at toy scale).
+- Paper scaffold compiles (tectonic); theory section drafted in paper/main.tex.
+- LM runs: GPU0 swiglu seed0 at 54M tokens (val 4.98); GPU1 tucker seed0 at 20M
+  (contended by exp20, recovers when exp20 finishes in ~15 min).
