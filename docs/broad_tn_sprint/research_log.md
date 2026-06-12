@@ -103,3 +103,34 @@ Swap-aware scoring rerun in flight to rule out the (w↔g) metric artifact.
 
 **exp23 (structured factors):** monarch < dense < blockdiag confirmed on layer 4 at
 0.6M; ll1/butterfly rows + layer 12 pending.
+
+## T+2:50 — Route/atom factorial complete; exp24 + exp26 verdicts
+
+**Exp A complete (the renaming).** 100M-token runs, val loss:
+| routes | atoms | FFN params | loss |
+| 1493 | 1493 | 2.29M | 4.751±0.016 (swiglu, n=5) |
+| 498 | 1992 | 2.29M | 4.747±0.005 (LL1 L=4, n=3) |
+| 1992 | 1992 | 3.06M | 4.716±0.018 (atom-matched, n=2) |
+| 498 | 498 | 0.77M | 4.887±0.001 (route-matched, n=2) |
+At fixed params the route/atom split is loss-flat across a 3× route range; param count
+dominates both directions. **Sprint-1's "LL1 ties SwiGLU" = "gate sharing is free";
+success mode 1 (LL1 reduced to tied-gate CP) confirmed.** LL1's real deliverables:
+the freedom to pick the split + the throughput edge.
+
+**Exp D (exp24, swap-aware, 3 seeds) — ground-truth interp negative.** Recovery rate
+0.00 for every architecture in every condition, including K=48 separable hub where
+the task is solved to 98% variance and the generating model IS a routed-CP/LL1
+tensor. Route-L1 changes nothing (λ=3e-3). Fit ordering still tracks structure (hub:
+ll1_l4 0.592 best in superposition; random: swiglu 0.606 best, ll1_l4 0.681 worst;
+tucker worst everywhere) — *capacity allocation* follows structure, *solution basis*
+does not. High-sparsity control (p=0.08) launched.
+
+**Exp E (exp26) — confound D vindicated on the real model.** Qwen layer-12 atoms are
+token-selective above chance (mean 0.19 vs null 0.093; p90 0.35; one atom at 1.0).
+Local-vs-global causal asymmetry is real: the most selective atom costs 0.102 logprob
+on its top contexts vs −0.002 globally (~60×) — sprint-1's global ablation metric
+would have scored it "negligible". Distilled students are MORE token-selective than
+the teacher (0.28-0.31 vs 0.19); sparse-CP ≈ plain CP; LL1 slightly less selective.
+
+Queued on GPU0: sparse_swiglu (route_l1 1e-3), sparse_ll1 (group_lasso 1e-3),
+struct_monarch4 — 100M tokens each.
